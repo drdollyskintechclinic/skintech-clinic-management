@@ -12,7 +12,7 @@ const pageSize = 10;
 export default function PatientsPage() {
   const [patients, setPatients] = useState<Patient[]>([]), [query, setQuery] = useState(""), [page, setPage] = useState(1), [total, setTotal] = useState(0);
   const [open, setOpen] = useState(false), [editing, setEditing] = useState<Patient | null>(null), [saving, setSaving] = useState(false), [error, setError] = useState("");
-  const [duplicate, setDuplicate] = useState<Duplicate[] | null>(null), [pendingData, setPendingData] = useState<Record<string, unknown> | null>(null), [refresh, setRefresh] = useState(0);
+  const [duplicate, setDuplicate] = useState<Duplicate[] | null>(null), [pendingData, setPendingData] = useState<Record<string, unknown> | null>(null), [refresh, setRefresh] = useState(0), [dateMode, setDateMode] = useState("DOB");
 
   async function load(search = query, currentPage = page) {
     const response = await fetch(`/api/patients?q=${encodeURIComponent(search)}&page=${currentPage}&pageSize=${pageSize}`, { cache: "no-store" });
@@ -21,8 +21,8 @@ export default function PatientsPage() {
   }
   useEffect(() => { void load(query, page); }, [query, page, refresh]);
 
-  function startNew() { setEditing(null); setError(""); setDuplicate(null); setPendingData(null); setOpen(true); }
-  function startEdit(patient: Patient) { setEditing(patient); setError(""); setDuplicate(null); setPendingData(null); setOpen(true); }
+  function startNew() { setEditing(null); setDateMode("DOB"); setError(""); setDuplicate(null); setPendingData(null); setOpen(true); }
+  function startEdit(patient: Patient) { setEditing(patient); setDateMode("DOB"); setError(""); setDuplicate(null); setPendingData(null); setOpen(true); }
 
   async function savePatient(data: Record<string, unknown>, formElement: HTMLFormElement, allowDuplicate = false) {
     setSaving(true); setError("");
@@ -35,20 +35,12 @@ export default function PatientsPage() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const formElement = event.currentTarget; const form = new FormData(formElement);
-    const dateMode = String(form.get("dateMode") ?? "DOB");
-    const dob = String(form.get("dateOfBirth") ?? "").trim();
-    const age = String(form.get("age") ?? "").trim();
     const data = {
-      name: form.get("name"),
-      mobile: form.get("mobile"),
-      gender: form.get("gender"),
-      dateOfBirth: dateMode === "AGE" ? "" : dob,
-      age: dateMode === "AGE" ? age : "",
-      address: form.get("address"),
-      referredBy: form.get("referredBy"),
-      alternateContactNumber: form.get("alternateContactNumber"),
-      email: form.get("email"),
-      notes: form.get("notes")
+      name: form.get("name"), mobile: form.get("mobile"), gender: form.get("gender"),
+      dateOfBirth: dateMode === "DOB" ? form.get("dateOfBirth") : "",
+      age: dateMode === "AGE" ? form.get("age") : "",
+      address: form.get("address"), referredBy: form.get("referredBy"),
+      alternateContactNumber: form.get("alternateContactNumber"), email: form.get("email"), notes: form.get("notes")
     };
     await savePatient(data, formElement);
   }
@@ -74,7 +66,7 @@ export default function PatientsPage() {
         <label>Full name<input name="name" required defaultValue={editing?.name ?? ""} placeholder="Patient full name" /></label>
         <label>Mobile No<input name="mobile" required defaultValue={editing?.mobile ?? ""} placeholder="10-digit mobile number" inputMode="tel" /></label>
         <label>Gender <span className="optional">optional</span><select name="gender" defaultValue={editing?.gender ?? ""}>{genders.map((gender) => <option key={gender} value={gender}>{genderLabels[gender]}</option>)}</select></label>
-        <label>DOB / Age <span className="optional">optional</span><select name="dateMode" defaultValue="DOB"><option value="DOB">Date of birth</option><option value="AGE">Age in years</option></select><input name="dateOfBirth" type="date" defaultValue={editing?.dateOfBirth ?? ""} /><input name="age" type="number" min="0" max="120" placeholder="Age in years" style={{ display: "none" }} /></label>
+        <label>DOB / Age <span className="optional">optional</span><select name="dateMode" value={dateMode} onChange={(e) => setDateMode(e.target.value)}><option value="DOB">Date of birth</option><option value="AGE">Age in years</option></select>{dateMode === "DOB" ? <input name="dateOfBirth" type="date" defaultValue={editing?.dateOfBirth ?? ""} /> : <input name="age" type="number" min="0" max="120" placeholder="Enter age in years" autoFocus />}</label>
         <label className="full">Address <span className="optional">optional</span><input name="address" defaultValue={editing?.address ?? ""} placeholder="Residential address" /></label>
         <label>Referred By <span className="optional">optional</span><input name="referredBy" defaultValue={editing?.referredBy ?? ""} placeholder="Name / source / existing patient" /></label>
         <label>Alternate Contact Number <span className="optional">optional</span><input name="alternateContactNumber" defaultValue={editing?.alternateContactNumber ?? ""} placeholder="10-digit mobile number" inputMode="tel" /></label>

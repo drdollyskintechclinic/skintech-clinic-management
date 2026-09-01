@@ -4,12 +4,14 @@ import { FormEvent, useEffect, useState } from "react";
 
 type Owner = { id: string; name: string | null; email: string };
 type Lead = { id: string; createdAt: string; name: string; mobile: string; email?: string; source: string; interestedTreatment: string; followUpAt?: string | null; notes?: string; status?: string; ownerUserId?: string };
+type Duplicate = { id: string; name: string; mobile: string; interestedTreatment: string; createdAt: string };
 const sources = ["Instagram", "Facebook", "WhatsApp", "Google", "Walk-in", "Referral", "Other"];
 const pageSize = 10;
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]), [owners, setOwners] = useState<Owner[]>([]), [query, setQuery] = useState(""), [page, setPage] = useState(1), [total, setTotal] = useState(0);
   const [open, setOpen] = useState(false), [editing, setEditing] = useState<Lead | null>(null), [saving, setSaving] = useState(false), [error, setError] = useState("");
+  const [duplicate, setDuplicate] = useState<Duplicate[] | null>(null), [pendingData, setPendingData] = useState<Record<string, unknown> | null>(null);
   const [refresh, setRefresh] = useState(0);
 
   async function load(search = query, currentPage = page) {
@@ -19,15 +21,23 @@ export default function LeadsPage() {
   }
   useEffect(() => { void load(query, page); }, [query, page, refresh]);
 
-  function startNew() { setEditing(null); setError(""); setOpen(true); }
-  function startEdit(lead: Lead) { setEditing(lead); setError(""); setOpen(true); }
+  function startNew() { setEditing(null); setError(""); setDuplicate(null); setPendingData(null); setOpen(true); }
+  function startEdit(lead: Lead) { setEditing(lead); setError(""); setDuplicate(null); setPendingData(null); setOpen(true); }
+
+  async function saveLead(data: Record<string, unknown>, formElement: HTMLFormElement, allowDuplicate = false) {
+    setSaving(true); setError("");
+    const payload = editing ? { leadId: editing.id, data } : { data, allowDuplicate };
+    const response = await fetch("/api/leads", { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editing ? payload : { ...data, allowDuplicate }) });
+    const result = await response.json(); setSaving(false);
+    if (response.status === 409 && Array.isArray(result.duplicates)) { setDuplicate(result.duplicates); setPendingData(data); return; }
+    if (!response.ok) { setError(result.error ?? "Unable to save enquiry."); return; }
+    formElement.reset(); setOpen(false); setEditing(null); setDuplicate(null); setPendingData(null); setRefresh((value) => value + 1);
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); const formElement = event.currentTarget; setSaving(true); setError(""); const form = new FormData(formElement); const followUp = String(form.get("followUpAt") || "");
+    event.preventDefault(); const formElement = event.currentTarget; const form = new FormData(formElement); const followUp = String(form.get("followUpAt") || "");
     const data = { name: form.get("name"), mobile: form.get("mobile"), email: form.get("email"), source: form.get("source"), interestedTreatment: form.get("interestedTreatment"), followUpAt: followUp ? new Date(followUp).toISOString() : "", notes: form.get("notes"), ownerUserId: form.get("ownerUserId") };
-    const response = await fetch("/api/leads", { method: editing ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editing ? { leadId: editing.id, data } : data) });
-    setSaving(false); if (!response.ok) { setError((await response.json()).error ?? "Unable to save enquiry."); return; }
-    formElement.reset(); setOpen(false); setEditing(null); setRefresh((value) => value + 1);
+    await saveLead(data, formElement);
   }
 
   async function assign(leadId: string, ownerUserId: string) {
@@ -43,7 +53,6 @@ export default function LeadsPage() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const ownerName = (id?: string) => owners.find((owner) => owner.id === id)?.name || owners.find((owner) => owner.id === id)?.email || "Unassigned";
   const localDate = (value?: string | null) => value ? new Date(value).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—";
 
   return <>
@@ -64,6 +73,7 @@ export default function LeadsPage() {
         <div className="form-actions full"><button className="button" disabled={saving}>{saving ? "Saving..." : editing ? "Update enquiry" : "Save enquiry"}</button><button className="secondary-button" type="button" onClick={() => { setOpen(false); setEditing(null); }}>Cancel</button></div>
       </form>
     </div>}
+    {duplicate && <div className="card duplicate-warning"><strong>Existing enquiry found for this mobile number</strong><p className="muted">The same patient may contact the clinic more than once, so we will not block the new enquiry. Please review the existing record before continuing.</p><div className="duplicate-list">{duplicate.map((item) => <div key={item.id}><strong>{item.name}</strong><span>{item.mobile} · {item.interestedTreatment} · {localDate(item.createdAt)}</span></div>)}</div><div className="form-actions"><button className="button" disabled={saving || !pendingData || !open} onClick={() => { const form = document.querySelector<HTMLFormElement>(".lead-form"); if (form && pendingData) void saveLead(pendingData, form, true); }}>Create new enquiry anyway</button><button className="secondary-button" onClick={() => { setDuplicate(null); setPendingData(null); }}>Go back</button></div></div>}
     <div className="card table-card lead-list">{leads.length === 0 ? <div className="empty-state"><strong>No enquiries yet</strong><span>Click “New enquiry” to capture your first lead.</span></div> : <div className="lead-table"><div className="lead-row lead-head"><span>Name</span><span>Mobile</span><span>Source</span><span>Treatment</span><span>Owner</span><span>Status</span><span>Follow-up</span><span>Actions</span></div>{leads.map((lead) => <div className="lead-row" key={lead.id}><strong>{lead.name}</strong><span>{lead.mobile}</span><span>{lead.source}</span><span>{lead.interestedTreatment}</span><select aria-label={`Assign ${lead.name}`} value={lead.ownerUserId ?? ""} onChange={(e) => void assign(lead.id, e.target.value)}><option value="">Unassigned</option>{owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name || owner.email}</option>)}</select><span><b className="badge">{lead.status ?? "NEW"}</b></span><span>{localDate(lead.followUpAt)}</span><span className="row-actions"><button className="text-button" type="button" onClick={() => startEdit(lead)}>Edit</button><button className="danger-button" type="button" onClick={() => void remove(lead)}>Delete</button></span></div>)}</div>}</div>
     {total > 0 && <div className="pagination"><button className="secondary-button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button><span>Page {page} of {totalPages}</span><button className="secondary-button" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)}>Next</button></div>}
   </>;

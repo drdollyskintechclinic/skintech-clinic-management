@@ -2,7 +2,7 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--canvas); color: var(--ink); font-family: Arial, Helvetica, sans-serif; }
 a { color: inherit; text-decoration: none; }
-button, input { font: inherit; }
+button, input, select, textarea { font: inherit; }
 .shell { display: grid; grid-template-columns: 15rem 1fr; min-height: 100vh; }
 .sidebar { padding: 1.5rem; background: var(--ink); color: white; display: flex; flex-direction: column; }
 .brand { font-weight: 700; line-height: 1.3; }
@@ -17,6 +17,8 @@ button, input { font: inherit; }
 h1 { font-size: clamp(2rem, 4vw, 2.8rem); margin: 0 0 .6rem; letter-spacing: -.03em; }
 h2 { margin-top: 0; }
 .lead { color: var(--muted); max-width: 48rem; font-size: 1.05rem; line-height: 1.6; }
+.muted, .optional { color: var(--muted); }
+.optional { font-size: .8rem; font-weight: 400; }
 .card { border: 1px solid var(--line); border-radius: .75rem; background: var(--surface); padding: 1.25rem; box-shadow: 0 1px 2px rgba(23, 48, 45, .04); }
 .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
 .stats { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); margin: 2rem 0; }
@@ -33,13 +35,32 @@ h2 { margin-top: 0; }
 .section-title { margin: 2rem 0 1rem; font-size: 1.25rem; }
 .toolbar { display: flex; gap: .75rem; margin: 1.5rem 0; flex-wrap: wrap; }
 .toolbar input { flex: 1; min-width: 16rem; border: 1px solid var(--line); border-radius: .45rem; padding: .7rem .8rem; background: white; }
-.button { background: var(--brand); border: 0; border-radius: .45rem; color: white; cursor: pointer; padding: .7rem 1rem; font-weight: 700; }
+.button, .secondary-button { border: 0; border-radius: .45rem; color: white; cursor: pointer; padding: .7rem 1rem; font-weight: 700; }
+.button { background: var(--brand); }
 .button:hover { background: var(--brand-dark); }
+.button:disabled { opacity: .65; cursor: wait; }
+.secondary-button { background: #eef3f1; color: var(--ink); }
+.text-button { border: 0; background: transparent; color: var(--brand); cursor: pointer; font-weight: 700; }
 .table-card { min-height: 16rem; display: grid; place-items: center; }
 .empty-state { text-align: center; display: grid; gap: .5rem; color: var(--muted); max-width: 34rem; }
 .empty-state strong { color: var(--ink); font-size: 1.1rem; }
+.form-card { margin-bottom: 1rem; }
+.form-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1rem; }
+.form-header h2 { margin-bottom: .35rem; }
+.lead-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.lead-form label { display: grid; gap: .4rem; font-weight: 700; font-size: .9rem; }
+.lead-form input, .lead-form select, .lead-form textarea { width: 100%; border: 1px solid var(--line); border-radius: .45rem; padding: .7rem .8rem; background: white; color: var(--ink); }
+.lead-form textarea { resize: vertical; }
+.full { grid-column: 1 / -1; }
+.form-actions { display: flex; gap: .75rem; align-items: center; }
+.lead-list { display: block; overflow-x: auto; }
+.lead-table { min-width: 900px; }
+.lead-row { display: grid; grid-template-columns: 1.3fr 1.1fr 1fr 1.5fr .8fr 1.35fr; gap: 1rem; padding: .9rem .25rem; border-bottom: 1px solid var(--line); align-items: center; font-size: .9rem; }
+.lead-row:last-child { border-bottom: 0; }
+.lead-head { color: var(--muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.badge { display: inline-block; padding: .3rem .5rem; border-radius: 999px; background: #e8f4f0; color: var(--brand-dark); font-size: .75rem; }
+.error { color: #a11d1d; }
 .login { display: grid; place-items: center; min-height: 100vh; padding: 1.5rem; }
 .login form { width: min(100%, 25rem); display: grid; gap: 1rem; }
 .login input { border: 1px solid var(--line); border-radius: .45rem; padding: .7rem; width: 100%; }
-.error { color: #a11d1d; }
-@media (max-width: 700px) { .shell { grid-template-columns: 1fr; } .sidebar { padding: 1rem; } .nav { margin-top: 1rem; grid-template-columns: repeat(2, 1fr); } .content { padding: 1.25rem; } .page-header { flex-direction: column; } }
+@media (max-width: 700px) { .shell { grid-template-columns: 1fr; } .sidebar { padding: 1rem; } .nav { margin-top: 1rem; grid-template-columns: repeat(2, 1fr); } .content { padding: 1.25rem; } .page-header { flex-direction: column; } .lead-form { grid-template-columns: 1fr; } .full { grid-column: auto; } }

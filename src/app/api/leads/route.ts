@@ -16,16 +16,33 @@ const leadSchema = z.object({
   notes: z.string().trim().max(2000).optional().or(z.literal(""))
 });
 
+type LeadData = z.infer<typeof leadSchema> & {
+  status?: string;
+  followUpAt?: string | null;
+};
+
 function serialize(event: { id: string; occurredAt: Date; actorUserId: string | null; metadata: unknown }) {
-  const data = (event.metadata ?? {}) as Record<string, unknown>;
-  return { id: event.id, createdAt: event.occurredAt.toISOString(), ownerUserId: event.actorUserId, ...data };
+  const data = (event.metadata ?? {}) as LeadData;
+  return {
+    id: event.id,
+    createdAt: event.occurredAt.toISOString(),
+    ownerUserId: event.actorUserId,
+    name: data.name,
+    mobile: data.mobile,
+    email: data.email,
+    source: data.source,
+    interestedTreatment: data.interestedTreatment,
+    followUpAt: data.followUpAt ?? null,
+    notes: data.notes,
+    status: data.status ?? "NEW"
+  };
 }
 
 export async function GET(request: Request) {
   const user = await requirePermission("reception.manage");
   const query = new URL(request.url).searchParams.get("q")?.trim().toLowerCase() ?? "";
   const events = await db.auditEvent.findMany({ where: { organizationId: user.organizationId, resourceType: "LEAD" }, orderBy: { occurredAt: "desc" }, take: 200 });
-  const leads = events.map(serialize).filter((lead) => !query || String(lead.name ?? "").toLowerCase().includes(query) || String(lead.mobile ?? "").toLowerCase().includes(query));
+  const leads = events.map(serialize).filter((lead) => !query || lead.name.toLowerCase().includes(query) || lead.mobile.toLowerCase().includes(query));
   return NextResponse.json({ leads });
 }
 

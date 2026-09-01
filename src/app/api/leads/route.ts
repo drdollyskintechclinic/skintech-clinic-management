@@ -6,6 +6,9 @@ import { db } from "@/server/db/prisma";
 
 export const dynamic = "force-dynamic";
 
+const statuses = ["NEW", "CONTACTED", "FOLLOW_UP", "APPOINTMENT_BOOKED", "VISITED", "CONVERTED", "LOST"] as const;
+const statusSchema = z.enum(statuses);
+
 const leadSchema = z.object({
   name: z.string().trim().min(2).max(120),
   mobile: z.string().trim().min(8).max(20),
@@ -42,27 +45,14 @@ function serialize(event: LeadEvent) {
 }
 
 async function currentLeads(organizationId: string) {
-  const events = await db.auditEvent.findMany({
-    where: { organizationId, resourceType: "LEAD" },
-    orderBy: { occurredAt: "desc" },
-    take: 2000
-  }) as LeadEvent[];
+  const events = await db.auditEvent.findMany({ where: { organizationId, resourceType: "LEAD" }, orderBy: { occurredAt: "desc" }, take: 2000 }) as LeadEvent[];
   const latest = new Map<string, LeadEvent>();
-  for (const event of events) {
-    const id = event.resourceId ?? event.id;
-    if (!latest.has(id)) latest.set(id, event);
-  }
-  return [...latest.values()]
-    .filter((event) => event.action !== "LEAD_DELETED")
-    .map(serialize);
+  for (const event of events) { const id = event.resourceId ?? event.id; if (!latest.has(id)) latest.set(id, event); }
+  return [...latest.values()].filter((event) => event.action !== "LEAD_DELETED").map(serialize);
 }
 
 async function findLeadEvent(organizationId: string, leadId: string) {
-  const events = await db.auditEvent.findMany({
-    where: { organizationId, resourceType: "LEAD", OR: [{ resourceId: leadId }, { id: leadId }] },
-    orderBy: { occurredAt: "desc" },
-    take: 1
-  }) as LeadEvent[];
+  const events = await db.auditEvent.findMany({ where: { organizationId, resourceType: "LEAD", OR: [{ resourceId: leadId }, { id: leadId }] }, orderBy: { occurredAt: "desc" }, take: 1 }) as LeadEvent[];
   const event = events[0];
   if (!event || event.action === "LEAD_DELETED") return null;
   return { event, lead: serialize(event) };
@@ -74,18 +64,12 @@ export async function GET(request: Request) {
   const query = params.get("q")?.trim().toLowerCase() ?? "";
   const page = Math.max(1, Number(params.get("page") ?? "1") || 1);
   const pageSize = Math.min(50, Math.max(5, Number(params.get("pageSize") ?? "10") || 10));
-  const allLeads = (await currentLeads(user.organizationId)).filter((lead) =>
-    !query || lead.name.toLowerCase().includes(query) || lead.mobile.toLowerCase().includes(query)
-  );
+  const allLeads = (await currentLeads(user.organizationId)).filter((lead) => !query || lead.name.toLowerCase().includes(query) || lead.mobile.toLowerCase().includes(query));
   const total = allLeads.length;
   const start = (page - 1) * pageSize;
   const leads = allLeads.slice(start, start + pageSize);
-  const owners = await db.user.findMany({
-    where: { isActive: true, staffProfile: { is: { organizationId: user.organizationId, isActive: true } } },
-    select: { id: true, name: true, email: true },
-    orderBy: { name: "asc" }
-  });
-  return NextResponse.json({ leads, owners, pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } });
+  const owners = await db.user.findMany({ where: { isActive: true, staffProfile: { is: { organizationId: user.organizationId, isActive: true } } }, select: { id: true, name: true, email: true }, orderBy: { name: "asc" } });
+  return NextResponse.json({ leads, owners, statuses, pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } });
 }
 
 export async function POST(request: Request) {
@@ -93,35 +77,18 @@ export async function POST(request: Request) {
   const body = await request.json();
   const parsed = leadSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Please check the enquiry details." }, { status: 400 });
-
   const normalizedMobile = normalizeMobile(parsed.data.mobile);
   if (normalizedMobile.length < 8) return NextResponse.json({ error: "Please enter a valid mobile number." }, { status: 400 });
-
   if (!body.allowDuplicate) {
-    const existing = (await currentLeads(user.organizationId))
-      .filter((lead) => normalizeMobile(lead.mobile) === normalizedMobile)
-      .slice(0, 5)
-      .map((lead) => ({ id: lead.id, name: lead.name, mobile: lead.mobile, interestedTreatment: lead.interestedTreatment, createdAt: lead.createdAt }));
-    if (existing.length) {
-      return NextResponse.json({ error: "An enquiry already exists for this mobile number.", duplicates: existing }, { status: 409 });
-    }
+    const existing = (await currentLeads(user.organizationId)).filter((lead) => normalizeMobile(lead.mobile) === normalizedMobile).slice(0, 5).map((lead) => ({ id: lead.id, name: lead.name, mobile: lead.mobile, interestedTreatment: lead.interestedTreatment, createdAt: lead.createdAt }));
+    if (existing.length) return NextResponse.json({ error: "An enquiry already exists for this mobile number.", duplicates: existing }, { status: 409 });
   }
-
   if (parsed.data.ownerUserId) {
     const owner = await db.user.findFirst({ where: { id: parsed.data.ownerUserId, isActive: true, staffProfile: { is: { organizationId: user.organizationId, isActive: true } } }, select: { id: true } });
     if (!owner) return NextResponse.json({ error: "Selected owner is not an active clinic staff member." }, { status: 400 });
   }
   const leadId = crypto.randomUUID();
-  const lead = await db.auditEvent.create({
-    data: {
-      organizationId: user.organizationId,
-      actorUserId: user.id,
-      resourceId: leadId,
-      action: "LEAD_CREATED",
-      resourceType: "LEAD",
-      metadata: { ...parsed.data, ownerUserId: parsed.data.ownerUserId || user.id, status: "NEW", followUpAt: parsed.data.followUpAt || null }
-    }
-  });
+  const lead = await db.auditEvent.create({ data: { organizationId: user.organizationId, actorUserId: user.id, resourceId: leadId, action: "LEAD_CREATED", resourceType: "LEAD", metadata: { ...parsed.data, ownerUserId: parsed.data.ownerUserId || user.id, status: "NEW", followUpAt: parsed.data.followUpAt || null } } });
   return NextResponse.json({ lead: serialize(lead as LeadEvent) }, { status: 201 });
 }
 
@@ -133,13 +100,19 @@ export async function PATCH(request: Request) {
   const existing = await findLeadEvent(user.organizationId, leadId.data);
   if (!existing) return NextResponse.json({ error: "Enquiry not found." }, { status: 404 });
 
-  const action = body.action === "assign" ? "assign" : "update";
-  if (action === "assign") {
+  if (body.action === "assign") {
     const ownerId = z.string().uuid().safeParse(body.ownerUserId);
     if (!ownerId.success) return NextResponse.json({ error: "Please select a valid owner." }, { status: 400 });
     const owner = await db.user.findFirst({ where: { id: ownerId.data, isActive: true, staffProfile: { is: { organizationId: user.organizationId, isActive: true } } }, select: { id: true } });
     if (!owner) return NextResponse.json({ error: "Selected owner is not an active clinic staff member." }, { status: 400 });
     const lead = await db.auditEvent.create({ data: { organizationId: user.organizationId, actorUserId: user.id, resourceId: leadId.data, action: "LEAD_ASSIGNED", resourceType: "LEAD", metadata: { ...existing.lead, ownerUserId: ownerId.data } } });
+    return NextResponse.json({ lead: serialize(lead as LeadEvent) });
+  }
+
+  if (body.action === "status") {
+    const nextStatus = statusSchema.safeParse(body.status);
+    if (!nextStatus.success) return NextResponse.json({ error: "Invalid enquiry status." }, { status: 400 });
+    const lead = await db.auditEvent.create({ data: { organizationId: user.organizationId, actorUserId: user.id, resourceId: leadId.data, action: "LEAD_STATUS_CHANGED", resourceType: "LEAD", metadata: { ...existing.lead, status: nextStatus.data } } });
     return NextResponse.json({ lead: serialize(lead as LeadEvent) });
   }
 

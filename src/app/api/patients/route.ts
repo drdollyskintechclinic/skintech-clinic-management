@@ -17,6 +17,7 @@ const patientSchema = z.object({
   age: z.union([z.string().trim(), z.number()]).optional().or(z.literal("")),
   gender: genderSchema.optional().or(z.literal("")),
   address: z.string().trim().max(500).optional().or(z.literal("")),
+  city: z.string().trim().max(120).optional().or(z.literal("")),
   referredBy: z.string().trim().max(200).optional().or(z.literal("")),
   alternateContactNumber: z.string().trim().max(20).optional().or(z.literal("")),
   notes: z.string().trim().max(3000).optional().or(z.literal(""))
@@ -55,6 +56,7 @@ function serialize(event: PatientEvent) {
     dateOfBirth: data.dateOfBirth ?? "",
     gender: data.gender ?? "",
     address: data.address ?? "",
+    city: data.city ?? "",
     referredBy: data.referredBy ?? "",
     alternateContactNumber: data.alternateContactNumber ?? "",
     notes: data.notes ?? ""

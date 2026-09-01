@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: skintech_app
+          POSTGRES_PASSWORD: ci_password_not_for_production
+          POSTGRES_DB: skintech_clinic
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U skintech_app -d skintech_clinic"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://skintech_app:ci_password_not_for_production@localhost:5432/skintech_clinic?schema=public
+      AUTH_SECRET: ci-only-secret-that-is-long-enough-for-auth-validation
+      AUTH_URL: http://127.0.0.1:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --no-frozen-lockfile
+      - run: pnpm db:migrate:deploy
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+

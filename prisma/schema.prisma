@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleName {
+  ADMIN
+  DOCTOR
+  RECEPTIONIST_TELECALLER
+  THERAPIST
+}
+
+model Organization {
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String
+  slug            String           @unique
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  clinicLocations ClinicLocation[]
+  staffProfiles   StaffProfile[]
+  userRoles       UserRole[]
+  auditEvents     AuditEvent[]
+}
+
+model ClinicLocation {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  name           String
+  code           String
+  address        String?
+  timezone       String       @default("Asia/Kolkata")
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  staffProfiles  StaffProfile[]
+  userRoles      UserRole[]
+
+  @@unique([organizationId, code])
+}
+
+model User {
+  id             String        @id @default(uuid()) @db.Uuid
+  email          String        @unique
+  name           String?
+  passwordHash   String?
+  emailVerified  DateTime?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  staffProfile   StaffProfile?
+  accounts       Account[]
+  sessions       Session[]
+  userRoles      UserRole[]
+  auditEvents    AuditEvent[]  @relation("AuditActor")
+}
+
+model StaffProfile {
+  id               String          @id @default(uuid()) @db.Uuid
+  userId           String          @unique @db.Uuid
+  organizationId   String          @db.Uuid
+  clinicLocationId String?         @db.Uuid
+  scopeKey         String
+  employeeCode     String?
+  jobTitle         String?
+  isActive         Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  user             User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  clinicLocation   ClinicLocation? @relation(fields: [clinicLocationId], references: [id], onDelete: Restrict)
+
+  @@unique([organizationId, employeeCode])
+}
+
+model Role {
+  id          String           @id @default(uuid()) @db.Uuid
+  name        RoleName         @unique
+  description String
+  createdAt   DateTime         @default(now())
+  permissions RolePermission[]
+  userRoles   UserRole[]
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  key         String           @unique
+  description String
+  createdAt   DateTime         @default(now())
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String     @db.Uuid
+  permissionId String     @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserRole {
+  id               String          @id @default(uuid()) @db.Uuid
+  userId           String          @db.Uuid
+  roleId           String          @db.Uuid
+  organizationId   String          @db.Uuid
+  clinicLocationId String?         @db.Uuid
+  assignedAt       DateTime        @default(now())
+  assignedByUserId String?         @db.Uuid
+  user             User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  role             Role            @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  clinicLocation   ClinicLocation? @relation(fields: [clinicLocationId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, roleId, organizationId, clinicLocationId])
+}
+
+model AuditEvent {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @db.Uuid
+  actorUserId    String?       @db.Uuid
+  action         String
+  resourceType   String
+  resourceId     String?
+  metadata       Json?
+  occurredAt     DateTime      @default(now())
+  requestId      String?
+  ipAddress      String?
+  userAgent      String?
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  actor          User?         @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, occurredAt])
+  @@index([resourceType, resourceId])
+}
+
+// Auth.js adapter tables. Credentials login uses passwordHash above; OAuth can be added later.
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}

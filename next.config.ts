@@ -16,7 +16,7 @@ const securityHeaders = [
       "form-action 'self'",
       "img-src 'self' data: blob:",
       "style-src 'self' 'unsafe-inline'",
-      `script-src 'self'${isDevelopment ? " 'unsafe-inline'" : ""}`,
+      `script-src 'self'${isDevelopment ? " 'unsafe-inline' 'unsafe-eval'" : ""}`,
       "connect-src 'self'",
       "font-src 'self'",
       "object-src 'none'"

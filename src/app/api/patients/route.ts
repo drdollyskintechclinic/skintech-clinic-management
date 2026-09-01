@@ -14,10 +14,11 @@ const patientSchema = z.object({
   mobile: z.string().trim().min(8).max(20),
   email: z.string().trim().email().max(320).optional().or(z.literal("")),
   dateOfBirth: z.string().date().optional().or(z.literal("")),
+  age: z.union([z.string().trim(), z.number()]).optional().or(z.literal("")),
   gender: genderSchema.optional().or(z.literal("")),
   address: z.string().trim().max(500).optional().or(z.literal("")),
-  emergencyContactName: z.string().trim().max(120).optional().or(z.literal("")),
-  emergencyContactMobile: z.string().trim().max(20).optional().or(z.literal("")),
+  referredBy: z.string().trim().max(200).optional().or(z.literal("")),
+  alternateContactNumber: z.string().trim().max(20).optional().or(z.literal("")),
   notes: z.string().trim().max(3000).optional().or(z.literal(""))
 });
 
@@ -26,6 +27,20 @@ type PatientEvent = { id: string; occurredAt: Date; actorUserId: string | null; 
 
 function normalizeMobile(value: string) {
   return value.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+}
+
+function indiaToday() {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return { year: Number(get("year")), month: Number(get("month")), day: Number(get("day")) };
+}
+
+function dateFromAge(ageValue: unknown) {
+  if (ageValue === "" || ageValue === undefined || ageValue === null) return "";
+  const age = Number(ageValue);
+  if (!Number.isInteger(age) || age < 0 || age > 120) throw new Error("Age must be a whole number between 0 and 120.");
+  const today = indiaToday();
+  return `${today.year - age}-${String(today.month).padStart(2, "0")}-${String(today.day).padStart(2, "0")}`;
 }
 
 function serialize(event: PatientEvent) {
@@ -40,8 +55,8 @@ function serialize(event: PatientEvent) {
     dateOfBirth: data.dateOfBirth ?? "",
     gender: data.gender ?? "",
     address: data.address ?? "",
-    emergencyContactName: data.emergencyContactName ?? "",
-    emergencyContactMobile: data.emergencyContactMobile ?? "",
+    referredBy: data.referredBy ?? "",
+    alternateContactNumber: data.alternateContactNumber ?? "",
     notes: data.notes ?? ""
   };
 }
@@ -71,6 +86,29 @@ async function findPatient(organizationId: string, patientId: string) {
   return serialize(event);
 }
 
+async function nextPatientNumber(organizationId: string) {
+  const today = indiaToday();
+  const prefix = `DDSC${today.year}${String(today.month).padStart(2, "0")}`;
+  const monthStart = new Date(Date.UTC(today.year, today.month - 1, 1));
+  const nextMonth = today.month === 12 ? new Date(Date.UTC(today.year + 1, 0, 1)) : new Date(Date.UTC(today.year, today.month, 1));
+  const events = await db.auditEvent.findMany({
+    where: { organizationId, resourceType: "PATIENT", action: "PATIENT_CREATED", occurredAt: { gte: monthStart, lt: nextMonth } },
+    select: { metadata: true }
+  });
+  let max = 0;
+  for (const event of events) {
+    const number = typeof event.metadata === "object" && event.metadata !== null && "patientNumber" in event.metadata ? String((event.metadata as { patientNumber?: unknown }).patientNumber ?? "") : "";
+    if (number.startsWith(prefix)) max = Math.max(max, Number(number.slice(prefix.length)) || 0);
+  }
+  return `${prefix}${String(max + 1).padStart(4, "0")}`;
+}
+
+function prepareData(data: PatientData) {
+  const dateOfBirth = data.dateOfBirth || dateFromAge(data.age);
+  const { age: _age, ...rest } = data;
+  return { ...rest, dateOfBirth };
+}
+
 export async function GET(request: Request) {
   const user = await requirePermission("reception.manage");
   const params = new URL(request.url).searchParams;
@@ -79,18 +117,12 @@ export async function GET(request: Request) {
   const pageSize = Math.min(50, Math.max(5, Number(params.get("pageSize") ?? "10") || 10));
 
   const allPatients = (await currentPatients(user.organizationId)).filter((patient) =>
-    !query ||
-    patient.name.toLowerCase().includes(query) ||
-    patient.mobile.toLowerCase().includes(query) ||
-    patient.patientNumber.toLowerCase().includes(query)
+    !query || patient.name.toLowerCase().includes(query) || patient.mobile.toLowerCase().includes(query) || patient.patientNumber.toLowerCase().includes(query)
   );
   const total = allPatients.length;
   const start = (page - 1) * pageSize;
 
-  return NextResponse.json({
-    patients: allPatients.slice(start, start + pageSize),
-    pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) }
-  });
+  return NextResponse.json({ patients: allPatients.slice(start, start + pageSize), pagination: { page, pageSize, total, totalPages: Math.max(1, Math.ceil(total / pageSize)) } });
 }
 
 export async function POST(request: Request) {
@@ -99,33 +131,20 @@ export async function POST(request: Request) {
   const parsed = patientSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Please check the patient details." }, { status: 400 });
 
-  const normalizedMobile = normalizeMobile(parsed.data.mobile);
+  let prepared: ReturnType<typeof prepareData>;
+  try { prepared = prepareData(parsed.data); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid age." }, { status: 400 }); }
+  const normalizedMobile = normalizeMobile(prepared.mobile);
   if (normalizedMobile.length !== 10) return NextResponse.json({ error: "Please enter a valid 10-digit mobile number." }, { status: 400 });
-  if (parsed.data.emergencyContactMobile && normalizeMobile(parsed.data.emergencyContactMobile).length !== 10) {
-    return NextResponse.json({ error: "Please enter a valid emergency contact mobile number." }, { status: 400 });
-  }
+  if (prepared.alternateContactNumber && normalizeMobile(prepared.alternateContactNumber).length !== 10) return NextResponse.json({ error: "Please enter a valid alternate contact number." }, { status: 400 });
 
   if (!body.allowDuplicate) {
-    const existing = (await currentPatients(user.organizationId))
-      .filter((patient) => normalizeMobile(patient.mobile) === normalizedMobile)
-      .slice(0, 5)
-      .map((patient) => ({ id: patient.id, patientNumber: patient.patientNumber, name: patient.name, mobile: patient.mobile, createdAt: patient.createdAt }));
+    const existing = (await currentPatients(user.organizationId)).filter((patient) => normalizeMobile(patient.mobile) === normalizedMobile).slice(0, 5).map((patient) => ({ id: patient.id, patientNumber: patient.patientNumber, name: patient.name, mobile: patient.mobile, createdAt: patient.createdAt }));
     if (existing.length) return NextResponse.json({ error: "A patient already exists for this mobile number.", duplicates: existing }, { status: 409 });
   }
 
   const patientId = crypto.randomUUID();
-  const patientNumber = `PT-${patientId.slice(0, 8).toUpperCase()}`;
-  const event = await db.auditEvent.create({
-    data: {
-      organizationId: user.organizationId,
-      actorUserId: user.id,
-      resourceId: patientId,
-      action: "PATIENT_CREATED",
-      resourceType: "PATIENT",
-      metadata: { ...parsed.data, patientNumber, mobile: normalizedMobile }
-    }
-  });
-
+  const patientNumber = await nextPatientNumber(user.organizationId);
+  const event = await db.auditEvent.create({ data: { organizationId: user.organizationId, actorUserId: user.id, resourceId: patientId, action: "PATIENT_CREATED", resourceType: "PATIENT", metadata: { ...prepared, patientNumber, mobile: normalizedMobile, alternateContactNumber: prepared.alternateContactNumber ? normalizeMobile(prepared.alternateContactNumber) : "" } } });
   return NextResponse.json({ patient: serialize(event as PatientEvent) }, { status: 201 });
 }
 
@@ -134,34 +153,23 @@ export async function PATCH(request: Request) {
   const body = await request.json();
   const patientId = z.string().uuid().safeParse(body.patientId);
   if (!patientId.success) return NextResponse.json({ error: "Invalid patient." }, { status: 400 });
-
   const existing = await findPatient(user.organizationId, patientId.data);
   if (!existing) return NextResponse.json({ error: "Patient not found." }, { status: 404 });
 
   const parsed = patientSchema.safeParse(body.data);
   if (!parsed.success) return NextResponse.json({ error: "Please check the patient details." }, { status: 400 });
-  const normalizedMobile = normalizeMobile(parsed.data.mobile);
+  let prepared: ReturnType<typeof prepareData>;
+  try { prepared = prepareData(parsed.data); } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid age." }, { status: 400 }); }
+  const normalizedMobile = normalizeMobile(prepared.mobile);
   if (normalizedMobile.length !== 10) return NextResponse.json({ error: "Please enter a valid 10-digit mobile number." }, { status: 400 });
-  if (parsed.data.emergencyContactMobile && normalizeMobile(parsed.data.emergencyContactMobile).length !== 10) {
-    return NextResponse.json({ error: "Please enter a valid emergency contact mobile number." }, { status: 400 });
-  }
+  if (prepared.alternateContactNumber && normalizeMobile(prepared.alternateContactNumber).length !== 10) return NextResponse.json({ error: "Please enter a valid alternate contact number." }, { status: 400 });
 
   if (!body.allowDuplicate && normalizedMobile !== normalizeMobile(existing.mobile)) {
     const duplicate = (await currentPatients(user.organizationId)).find((patient) => patient.id !== existing.id && normalizeMobile(patient.mobile) === normalizedMobile);
     if (duplicate) return NextResponse.json({ error: "Another patient already uses this mobile number.", duplicates: [duplicate] }, { status: 409 });
   }
 
-  const event = await db.auditEvent.create({
-    data: {
-      organizationId: user.organizationId,
-      actorUserId: user.id,
-      resourceId: patientId.data,
-      action: "PATIENT_UPDATED",
-      resourceType: "PATIENT",
-      metadata: { ...parsed.data, patientNumber: existing.patientNumber, mobile: normalizedMobile }
-    }
-  });
-
+  const event = await db.auditEvent.create({ data: { organizationId: user.organizationId, actorUserId: user.id, resourceId: patientId.data, action: "PATIENT_UPDATED", resourceType: "PATIENT", metadata: { ...prepared, patientNumber: existing.patientNumber, mobile: normalizedMobile, alternateContactNumber: prepared.alternateContactNumber ? normalizeMobile(prepared.alternateContactNumber) : "" } } });
   return NextResponse.json({ patient: serialize(event as PatientEvent) });
 }
 
@@ -171,16 +179,6 @@ export async function DELETE(request: Request) {
   if (!patientId.success) return NextResponse.json({ error: "Invalid patient." }, { status: 400 });
   const existing = await findPatient(user.organizationId, patientId.data);
   if (!existing) return NextResponse.json({ error: "Patient not found." }, { status: 404 });
-
-  await db.auditEvent.create({
-    data: {
-      organizationId: user.organizationId,
-      actorUserId: user.id,
-      resourceId: patientId.data,
-      action: "PATIENT_DELETED",
-      resourceType: "PATIENT",
-      metadata: { ...existing }
-    }
-  });
+  await db.auditEvent.create({ data: { organizationId: user.organizationId, actorUserId: user.id, resourceId: patientId.data, action: "PATIENT_DELETED", resourceType: "PATIENT", metadata: { ...existing } } });
   return NextResponse.json({ ok: true });
 }

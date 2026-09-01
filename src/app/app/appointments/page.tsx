@@ -1,0 +1,3 @@
+export default function AppointmentsPage() {
+  return <><p className="eyebrow">Today</p><h1>Appointments</h1><p className="lead">Manage the clinic day, check-ins and upcoming visits from one place.</p><div className="stats"><section className="card"><span>Today</span><strong>0</strong><small>appointments</small></section><section className="card"><span>Waiting</span><strong>0</strong><small>checked in</small></section><section className="card"><span>Upcoming</span><strong>0</strong><small>next 7 days</small></section></div><div className="card table-card"><div className="empty-state"><strong>No appointments today</strong><span>Once appointments are created, the daily schedule and check-in queue will appear here.</span></div></div></>;
+}

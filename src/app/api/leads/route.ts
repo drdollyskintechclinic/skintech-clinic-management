@@ -20,6 +20,10 @@ const leadSchema = z.object({
 type LeadData = z.infer<typeof leadSchema> & { status?: string; followUpAt?: string | null };
 type LeadEvent = { id: string; occurredAt: Date; actorUserId: string | null; resourceId: string | null; action: string; metadata: unknown };
 
+function normalizeMobile(value: string) {
+  return value.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+}
+
 function serialize(event: LeadEvent) {
   const data = (event.metadata ?? {}) as LeadData;
   return {
@@ -86,8 +90,23 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const user = await requirePermission("reception.manage");
-  const parsed = leadSchema.safeParse(await request.json());
+  const body = await request.json();
+  const parsed = leadSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Please check the enquiry details." }, { status: 400 });
+
+  const normalizedMobile = normalizeMobile(parsed.data.mobile);
+  if (normalizedMobile.length < 8) return NextResponse.json({ error: "Please enter a valid mobile number." }, { status: 400 });
+
+  if (!body.allowDuplicate) {
+    const existing = (await currentLeads(user.organizationId))
+      .filter((lead) => normalizeMobile(lead.mobile) === normalizedMobile)
+      .slice(0, 5)
+      .map((lead) => ({ id: lead.id, name: lead.name, mobile: lead.mobile, interestedTreatment: lead.interestedTreatment, createdAt: lead.createdAt }));
+    if (existing.length) {
+      return NextResponse.json({ error: "An enquiry already exists for this mobile number.", duplicates: existing }, { status: 409 });
+    }
+  }
+
   if (parsed.data.ownerUserId) {
     const owner = await db.user.findFirst({ where: { id: parsed.data.ownerUserId, isActive: true, staffProfile: { is: { organizationId: user.organizationId, isActive: true } } }, select: { id: true } });
     if (!owner) return NextResponse.json({ error: "Selected owner is not an active clinic staff member." }, { status: 400 });

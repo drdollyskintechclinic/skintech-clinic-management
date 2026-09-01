@@ -1,0 +1,3 @@
+export default function PatientsPage() {
+  return <><p className="eyebrow">Patient management</p><h1>Patients</h1><p className="lead">Find patients quickly and keep registration details ready for every visit.</p><div className="toolbar"><button className="button">+ Register patient</button><input aria-label="Search patients" placeholder="Search patient name or mobile" /></div><div className="card table-card"><div className="empty-state"><strong>No patients yet</strong><span>Registered patients will appear here with contact details, last visit and active treatment status.</span></div></div></>;
+}

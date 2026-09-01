@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
-type Patient = { id: string; patientNumber: string; createdAt: string; name: string; mobile: string; email?: string; dateOfBirth?: string; gender?: string; address?: string; referredBy?: string; alternateContactNumber?: string; notes?: string };
+type Patient = { id: string; patientNumber: string; createdAt: string; name: string; mobile: string; email?: string; dateOfBirth?: string; gender?: string; address?: string; city?: string; referredBy?: string; alternateContactNumber?: string; notes?: string };
 type Duplicate = { id: string; patientNumber: string; name: string; mobile: string; createdAt: string };
 
 const genders = ["", "FEMALE", "MALE", "OTHER", "PREFER_NOT_TO_SAY"];
@@ -53,7 +53,7 @@ export default function PatientsPage() {
       name: form.get("name"), mobile: form.get("mobile"), gender: form.get("gender"),
       dateOfBirth: dateMode === "DOB" ? form.get("dateOfBirth") : "",
       age: dateMode === "AGE" ? form.get("age") : "",
-      address: form.get("address"), referredBy: form.get("referredBy"),
+      address: form.get("address"), city: form.get("city"), referredBy: form.get("referredBy"),
       alternateContactNumber: form.get("alternateContactNumber"), email: form.get("email"), notes: form.get("notes")
     };
     await savePatient(data, formElement);
@@ -81,6 +81,7 @@ export default function PatientsPage() {
         <label>Gender <span className="optional">optional</span><select name="gender" defaultValue={editing?.gender ?? ""}>{genders.map((gender) => <option key={gender} value={gender}>{genderLabels[gender]}</option>)}</select></label>
         <label>Age / DOB <span className="optional">optional</span><select name="dateMode" value={dateMode} onChange={(e) => setDateMode(e.target.value)}><option value="AGE">Age in years</option><option value="DOB">Date of birth</option></select>{dateMode === "AGE" ? <input name="age" type="number" min="0" max="120" defaultValue={editing ? ageFromDateOfBirth(editing.dateOfBirth) : ""} placeholder="Enter age in years" autoFocus /> : <input name="dateOfBirth" type="date" defaultValue={editing?.dateOfBirth ?? ""} />}</label>
         <label className="full">Address <span className="optional">optional</span><input name="address" defaultValue={editing?.address ?? ""} placeholder="Residential address" /></label>
+        <label>City <span className="optional">optional</span><input name="city" defaultValue={editing?.city ?? ""} placeholder="City" /></label>
         <label>Referred By <span className="optional">optional</span><input name="referredBy" defaultValue={editing?.referredBy ?? ""} placeholder="Name / source / existing patient" /></label>
         <label>Alternate Contact Number <span className="optional">optional</span><input name="alternateContactNumber" defaultValue={editing?.alternateContactNumber ?? ""} placeholder="10-digit mobile number" inputMode="tel" /></label>
         <label>Email <span className="optional">optional</span><input name="email" type="email" defaultValue={editing?.email ?? ""} placeholder="name@example.com" /></label>
@@ -91,7 +92,7 @@ export default function PatientsPage() {
 
     {duplicate && <div className="card duplicate-warning"><strong>Existing patient found for this mobile number</strong><p className="muted">A mobile number normally identifies an existing patient. If this is genuinely a different person sharing the number, you can continue after reviewing the record.</p><div className="duplicate-list">{duplicate.map((item) => <div key={item.id}><strong>{item.patientNumber} · {item.name}</strong><span>{item.mobile} · Registered {new Date(item.createdAt).toLocaleDateString("en-IN")}</span></div>)}</div><div className="form-actions"><button className="button" disabled={saving || !pendingData || !open} onClick={() => { const form = document.querySelector<HTMLFormElement>(".lead-form"); if (form && pendingData) void savePatient(pendingData, form, true); }}>Create patient anyway</button><button className="secondary-button" onClick={() => { setDuplicate(null); setPendingData(null); }}>Go back</button></div></div>}
 
-    <div className="card table-card lead-list">{patients.length === 0 ? <div className="empty-state"><strong>No patients yet</strong><span>Click “Register patient” to create the first patient record.</span></div> : <div className="lead-table patient-table"><div className="lead-row lead-head"><span>Patient ID</span><span>Name</span><span>Mobile</span><span>Gender</span><span>Age</span><span>Referred By</span><span>Notes</span><span>Actions</span></div>{patients.map((patient) => <div className="lead-row" key={patient.id}><strong>{patient.patientNumber}</strong><strong>{patient.name}</strong><span>{patient.mobile}</span><span>{genderLabels[patient.gender ?? ""] || patient.gender || "—"}</span><span>{calculateAge(patient.dateOfBirth)}</span><span>{patient.referredBy || "—"}</span><span className="notes-cell" title={patient.notes || "No notes"}>{patient.notes || "—"}</span><span className="row-actions"><button className="text-button" type="button" onClick={() => startEdit(patient)}>Edit</button><button className="danger-button" type="button" onClick={() => void remove(patient)}>Delete</button></span></div>)}</div>}</div>
+    <div className="card table-card lead-list">{patients.length === 0 ? <div className="empty-state"><strong>No patients yet</strong><span>Click “Register patient” to create the first patient record.</span></div> : <div className="lead-table patient-table"><div className="lead-row lead-head"><span>Patient ID</span><span>Name</span><span>Mobile</span><span>Gender</span><span>Age</span><span>City</span><span>Referred By</span><span>Notes</span><span>Actions</span></div>{patients.map((patient) => <div className="lead-row" key={patient.id}><strong>{patient.patientNumber}</strong><strong>{patient.name}</strong><span>{patient.mobile}</span><span>{genderLabels[patient.gender ?? ""] || patient.gender || "—"}</span><span>{calculateAge(patient.dateOfBirth)}</span><span>{patient.city || "—"}</span><span>{patient.referredBy || "—"}</span><span className="notes-cell" title={patient.notes || "No notes"}>{patient.notes || "—"}</span><span className="row-actions"><button className="text-button" type="button" onClick={() => startEdit(patient)}>Edit</button><button className="danger-button" type="button" onClick={() => void remove(patient)}>Delete</button></span></div>)}</div>}</div>
     {total > 0 && <div className="pagination"><button className="secondary-button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button><span>Page {page} of {totalPages}</span><button className="secondary-button" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)}>Next</button></div>}
   </>;
 }

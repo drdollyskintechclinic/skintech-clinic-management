@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
-type Patient = { id: string; patientNumber: string; createdAt: string; name: string; mobile: string; email?: string; dateOfBirth?: string; gender?: string; address?: string; emergencyContactName?: string; emergencyContactMobile?: string; notes?: string };
+type Patient = { id: string; patientNumber: string; createdAt: string; name: string; mobile: string; email?: string; dateOfBirth?: string; gender?: string; address?: string; referredBy?: string; alternateContactNumber?: string; notes?: string };
 type Duplicate = { id: string; patientNumber: string; name: string; mobile: string; createdAt: string };
 
 const genders = ["", "FEMALE", "MALE", "OTHER", "PREFER_NOT_TO_SAY"];
@@ -35,7 +35,21 @@ export default function PatientsPage() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const formElement = event.currentTarget; const form = new FormData(formElement);
-    const data = { name: form.get("name"), mobile: form.get("mobile"), email: form.get("email"), dateOfBirth: form.get("dateOfBirth"), gender: form.get("gender"), address: form.get("address"), emergencyContactName: form.get("emergencyContactName"), emergencyContactMobile: form.get("emergencyContactMobile"), notes: form.get("notes") };
+    const dateMode = String(form.get("dateMode") ?? "DOB");
+    const dob = String(form.get("dateOfBirth") ?? "").trim();
+    const age = String(form.get("age") ?? "").trim();
+    const data = {
+      name: form.get("name"),
+      mobile: form.get("mobile"),
+      gender: form.get("gender"),
+      dateOfBirth: dateMode === "AGE" ? "" : dob,
+      age: dateMode === "AGE" ? age : "",
+      address: form.get("address"),
+      referredBy: form.get("referredBy"),
+      alternateContactNumber: form.get("alternateContactNumber"),
+      email: form.get("email"),
+      notes: form.get("notes")
+    };
     await savePatient(data, formElement);
   }
 
@@ -58,13 +72,13 @@ export default function PatientsPage() {
     {open && <div className="card form-card"><div className="form-header"><div><h2>{editing ? "Edit patient" : "Register patient"}</h2><p className="muted">{editing ? "Update the patient record." : "Create the patient's main clinic record."}</p></div><button className="text-button" type="button" onClick={() => { setOpen(false); setEditing(null); }}>Close</button></div>
       <form className="lead-form" onSubmit={submit}>
         <label>Full name<input name="name" required defaultValue={editing?.name ?? ""} placeholder="Patient full name" /></label>
-        <label>Mobile<input name="mobile" required defaultValue={editing?.mobile ?? ""} placeholder="10-digit mobile number" inputMode="tel" /></label>
-        <label>Email <span className="optional">optional</span><input name="email" type="email" defaultValue={editing?.email ?? ""} placeholder="name@example.com" /></label>
-        <label>Date of birth <span className="optional">optional</span><input name="dateOfBirth" type="date" defaultValue={editing?.dateOfBirth ?? ""} /></label>
+        <label>Mobile No<input name="mobile" required defaultValue={editing?.mobile ?? ""} placeholder="10-digit mobile number" inputMode="tel" /></label>
         <label>Gender <span className="optional">optional</span><select name="gender" defaultValue={editing?.gender ?? ""}>{genders.map((gender) => <option key={gender} value={gender}>{genderLabels[gender]}</option>)}</select></label>
-        <label>Emergency contact name <span className="optional">optional</span><input name="emergencyContactName" defaultValue={editing?.emergencyContactName ?? ""} placeholder="Name" /></label>
-        <label>Emergency contact mobile <span className="optional">optional</span><input name="emergencyContactMobile" defaultValue={editing?.emergencyContactMobile ?? ""} placeholder="10-digit mobile number" inputMode="tel" /></label>
+        <label>DOB / Age <span className="optional">optional</span><select name="dateMode" defaultValue="DOB"><option value="DOB">Date of birth</option><option value="AGE">Age in years</option></select><input name="dateOfBirth" type="date" defaultValue={editing?.dateOfBirth ?? ""} /><input name="age" type="number" min="0" max="120" placeholder="Age in years" style={{ display: "none" }} /></label>
         <label className="full">Address <span className="optional">optional</span><input name="address" defaultValue={editing?.address ?? ""} placeholder="Residential address" /></label>
+        <label>Referred By <span className="optional">optional</span><input name="referredBy" defaultValue={editing?.referredBy ?? ""} placeholder="Name / source / existing patient" /></label>
+        <label>Alternate Contact Number <span className="optional">optional</span><input name="alternateContactNumber" defaultValue={editing?.alternateContactNumber ?? ""} placeholder="10-digit mobile number" inputMode="tel" /></label>
+        <label>Email <span className="optional">optional</span><input name="email" type="email" defaultValue={editing?.email ?? ""} placeholder="name@example.com" /></label>
         <label className="full">Notes <span className="optional">optional</span><textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="General patient notes, preferences or important information..." /></label>
         <div className="form-actions full"><button className="button" disabled={saving}>{saving ? "Saving..." : editing ? "Update patient" : "Save patient"}</button><button className="secondary-button" type="button" onClick={() => { setOpen(false); setEditing(null); }}>Cancel</button></div>
       </form>
@@ -72,7 +86,7 @@ export default function PatientsPage() {
 
     {duplicate && <div className="card duplicate-warning"><strong>Existing patient found for this mobile number</strong><p className="muted">A mobile number normally identifies an existing patient. If this is genuinely a different person sharing the number, you can continue after reviewing the record.</p><div className="duplicate-list">{duplicate.map((item) => <div key={item.id}><strong>{item.patientNumber} · {item.name}</strong><span>{item.mobile} · Registered {date(item.createdAt)}</span></div>)}</div><div className="form-actions"><button className="button" disabled={saving || !pendingData || !open} onClick={() => { const form = document.querySelector<HTMLFormElement>(".lead-form"); if (form && pendingData) void savePatient(pendingData, form, true); }}>Create patient anyway</button><button className="secondary-button" onClick={() => { setDuplicate(null); setPendingData(null); }}>Go back</button></div></div>}
 
-    <div className="card table-card lead-list">{patients.length === 0 ? <div className="empty-state"><strong>No patients yet</strong><span>Click “Register patient” to create the first patient record.</span></div> : <div className="lead-table patient-table"><div className="lead-row lead-head"><span>Patient ID</span><span>Name</span><span>Mobile</span><span>Gender</span><span>DOB</span><span>Emergency contact</span><span>Notes</span><span>Actions</span></div>{patients.map((patient) => <div className="lead-row" key={patient.id}><strong>{patient.patientNumber}</strong><strong>{patient.name}</strong><span>{patient.mobile}</span><span>{genderLabels[patient.gender ?? ""] || patient.gender || "—"}</span><span>{date(patient.dateOfBirth)}</span><span>{patient.emergencyContactName ? `${patient.emergencyContactName}${patient.emergencyContactMobile ? ` · ${patient.emergencyContactMobile}` : ""}` : "—"}</span><span className="notes-cell" title={patient.notes || "No notes"}>{patient.notes || "—"}</span><span className="row-actions"><button className="text-button" type="button" onClick={() => startEdit(patient)}>Edit</button><button className="danger-button" type="button" onClick={() => void remove(patient)}>Delete</button></span></div>)}</div>}</div>
+    <div className="card table-card lead-list">{patients.length === 0 ? <div className="empty-state"><strong>No patients yet</strong><span>Click “Register patient” to create the first patient record.</span></div> : <div className="lead-table patient-table"><div className="lead-row lead-head"><span>Patient ID</span><span>Name</span><span>Mobile</span><span>Gender</span><span>DOB</span><span>Referred By</span><span>Notes</span><span>Actions</span></div>{patients.map((patient) => <div className="lead-row" key={patient.id}><strong>{patient.patientNumber}</strong><strong>{patient.name}</strong><span>{patient.mobile}</span><span>{genderLabels[patient.gender ?? ""] || patient.gender || "—"}</span><span>{date(patient.dateOfBirth)}</span><span>{patient.referredBy || "—"}</span><span className="notes-cell" title={patient.notes || "No notes"}>{patient.notes || "—"}</span><span className="row-actions"><button className="text-button" type="button" onClick={() => startEdit(patient)}>Edit</button><button className="danger-button" type="button" onClick={() => void remove(patient)}>Delete</button></span></div>)}</div>}</div>
     {total > 0 && <div className="pagination"><button className="secondary-button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button><span>Page {page} of {totalPages}</span><button className="secondary-button" disabled={page >= totalPages} onClick={() => setPage((value) => value + 1)}>Next</button></div>}
   </>;
 }

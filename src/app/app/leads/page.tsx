@@ -22,8 +22,9 @@ export default function LeadsPage() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     setSaving(true); setError("");
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(formElement);
     const followUp = String(form.get("followUpAt") || "");
     const response = await fetch("/api/leads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
       name: form.get("name"), mobile: form.get("mobile"), email: form.get("email"), source: form.get("source"),
@@ -31,7 +32,7 @@ export default function LeadsPage() {
     }) });
     setSaving(false);
     if (!response.ok) { setError((await response.json()).error ?? "Unable to save enquiry."); return; }
-    event.currentTarget.reset(); setOpen(false); await load("");
+    formElement.reset(); setOpen(false); await load("");
   }
 
   return <>

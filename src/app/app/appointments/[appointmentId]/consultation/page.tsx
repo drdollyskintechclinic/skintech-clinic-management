@@ -86,8 +86,8 @@ export default function ConsultationPage() {
 
   return <>
     <p className="eyebrow">Clinical record</p>
-    <div className="page-header">
-      <div><h1>Consultation</h1><p className="lead">{appointment.appointmentNumber} · {displayDate(appointment.appointmentDate)} · {appointment.appointmentTime}</p></div>
+    <div className="page-header print-hide">
+      <div><p className="eyebrow">Clinical record</p><p className="lead">{appointment.appointmentNumber} · {displayDate(appointment.appointmentDate)} · {appointment.appointmentTime}</p></div>
       <div className="form-actions print-hide">
         <button type="button" className="secondary-button" onClick={printConsultation} disabled={!hasSavedConsultation}>Print consultation</button>
         <Link className="secondary-button" href={"/app/appointments?date=" + encodeURIComponent(appointment.appointmentDate)}>Back to appointments</Link>
@@ -106,7 +106,8 @@ export default function ConsultationPage() {
     <div className="card patient-summary">
       <div><span className="eyebrow">Patient</span><strong>{appointment.patientNumber} · {appointment.patientName}</strong><small>{appointment.mobile}</small></div>
       <div><span className="eyebrow">Doctor</span><strong>{appointment.doctorName}</strong><small>{appointment.appointmentType}{appointment.treatment ? " · " + appointment.treatment : ""}</small></div>
-      <div><span className="eyebrow">Appointment status</span><strong>{appointment.status.replaceAll("_", " ")}</strong></div>
+      <div className="screen-only"><span className="eyebrow">Appointment status</span><strong>{appointment.status.replaceAll("_", " ")}</strong></div>
+      <div className="print-only"><span className="eyebrow">Appointment</span><strong>{displayDate(appointment.appointmentDate)} · {appointment.appointmentTime}</strong></div>
     </div>
 
     <div className="card form-card consultation-document">
@@ -114,35 +115,40 @@ export default function ConsultationPage() {
       <form className="lead-form" onSubmit={submit}>
         <label className="consultation-field full"><span className="consultation-field-label">Chief complaint / patient's concern</span>
           {templateSelect("chiefComplaint")}
-          <textarea name="chiefComplaint" rows={4} value={consultation.chiefComplaint ?? ""} onChange={(e) => applyTemplate("chiefComplaint", e.target.value)} placeholder="What brings the patient to the clinic?" />
+          <textarea name="chiefComplaint" rows={4} value={consultation.chiefComplaint ?? ""} onChange={(e) => applyTemplate("chiefComplaint", e.target.value)} placeholder="What brings the patient to the clinic?" /><div className="print-value">{consultation.chiefComplaint || "—"}</div>
         </label>
         <label className="consultation-field full"><span className="consultation-field-label">Examination / clinical findings</span>
           {templateSelect("examinationFindings")}
-          <textarea name="examinationFindings" rows={5} value={consultation.examinationFindings ?? ""} onChange={(e) => applyTemplate("examinationFindings", e.target.value)} placeholder="Record relevant examination findings." />
+          <textarea name="examinationFindings" rows={5} value={consultation.examinationFindings ?? ""} onChange={(e) => applyTemplate("examinationFindings", e.target.value)} placeholder="Record relevant examination findings." /><div className="print-value">{consultation.examinationFindings || "—"}</div>
         </label>
         <label className="consultation-field"><span className="consultation-field-label">Diagnosis / assessment</span>
           {templateSelect("diagnosis")}
-          <textarea name="diagnosis" rows={4} value={consultation.diagnosis ?? ""} onChange={(e) => applyTemplate("diagnosis", e.target.value)} placeholder="Clinical assessment / diagnosis" />
+          <textarea name="diagnosis" rows={4} value={consultation.diagnosis ?? ""} onChange={(e) => applyTemplate("diagnosis", e.target.value)} placeholder="Clinical assessment / diagnosis" /><div className="print-value">{consultation.diagnosis || "—"}</div>
         </label>
         <label className="consultation-field"><span className="consultation-field-label">Treatment advised</span>
           {templateSelect("treatmentAdvised")}
-          <textarea name="treatmentAdvised" rows={4} value={consultation.treatmentAdvised ?? ""} onChange={(e) => applyTemplate("treatmentAdvised", e.target.value)} placeholder="Treatment plan and advice" />
+          <textarea name="treatmentAdvised" rows={4} value={consultation.treatmentAdvised ?? ""} onChange={(e) => applyTemplate("treatmentAdvised", e.target.value)} placeholder="Treatment plan and advice" /><div className="print-value">{consultation.treatmentAdvised || "—"}</div>
         </label>
         <label className="consultation-field"><span className="consultation-field-label">Procedure performed</span>
           {templateSelect("procedurePerformed")}
-          <textarea name="procedurePerformed" rows={4} value={consultation.procedurePerformed ?? ""} onChange={(e) => applyTemplate("procedurePerformed", e.target.value)} placeholder="Procedure performed during this visit" />
+          <textarea name="procedurePerformed" rows={4} value={consultation.procedurePerformed ?? ""} onChange={(e) => applyTemplate("procedurePerformed", e.target.value)} placeholder="Procedure performed during this visit" /><div className="print-value">{consultation.procedurePerformed || "—"}</div>
         </label>
         <label className="consultation-field"><span className="consultation-field-label">Prescription / medicines</span>
           {templateSelect("prescription")}
-          <textarea name="prescription" rows={4} value={consultation.prescription ?? ""} onChange={(e) => applyTemplate("prescription", e.target.value)} placeholder="Medicine, dose, frequency and duration" />
+          <textarea name="prescription" rows={4} value={consultation.prescription ?? ""} onChange={(e) => applyTemplate("prescription", e.target.value)} placeholder="Medicine, dose, frequency and duration" /><div className="print-value prescription-print-value">{consultation.prescription || "—"}</div>
         </label>
         <label className="consultation-field full"><span className="consultation-field-label">Doctor's notes</span>
           {templateSelect("doctorNotes")}
-          <textarea name="doctorNotes" rows={4} value={consultation.doctorNotes ?? ""} onChange={(e) => applyTemplate("doctorNotes", e.target.value)} placeholder="Additional clinical notes" />
+          <textarea name="doctorNotes" rows={4} value={consultation.doctorNotes ?? ""} onChange={(e) => applyTemplate("doctorNotes", e.target.value)} placeholder="Additional clinical notes" /><div className="print-value">{consultation.doctorNotes || "—"}</div>
         </label>
         <label className="consultation-field"><span className="consultation-field-label">Follow-up date</span>
-          <input name="followUpDate" type="date" defaultValue={consultation.followUpDate ?? ""} />
+          <input name="followUpDate" type="date" defaultValue={consultation.followUpDate ?? ""} /><div className="print-value">{displayDate(consultation.followUpDate ?? "")}</div>
         </label>
+        <div className="doctor-signature print-only">
+          <div className="signature-line"></div>
+          <strong>{appointment.doctorName}</strong>
+          <span>Doctor's Signature</span>
+        </div>
         <div className="form-actions full print-hide">
           <button className="button" disabled={saving}>{saving ? "Saving..." : "Save consultation"}</button>
           <button type="button" className="secondary-button" onClick={printConsultation} disabled={!hasSavedConsultation}>Print consultation</button>

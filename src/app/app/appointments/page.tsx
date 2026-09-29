@@ -212,12 +212,13 @@ export default function AppointmentsPage() {
 
   return <>
     <p className="eyebrow">Clinic schedule</p>
-    <div className="page-header">
-      <div><h1>Appointments</h1><p className="lead">Schedule visits, manage today's queue and track appointment status.</p></div>
-      <button className="button" onClick={openNew}>+ New appointment</button>
+    <div className="appointments-header">
+      <div className="appointments-title"><h1>Appointments</h1><p className="lead">Schedule visits, manage today's queue and track appointment status.</p></div>
+      <div className="appointments-header-actions">
+        <label>Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
+        <button className="button" onClick={openNew}>+ New appointment</button>
+      </div>
     </div>
-
-    <div className="toolbar"><label>Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label></div>
     {error && <p className="error">{error}</p>}
 
     {open && <div className="card form-card">

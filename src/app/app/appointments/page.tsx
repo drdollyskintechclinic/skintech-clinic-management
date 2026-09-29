@@ -145,7 +145,7 @@ export default function AppointmentsPage() {
   }
 
   function closeForm() {
-    setOpen(false); setEditing(null); setError(""); setPatientQuery(""); setPatientResults([]); setSelectedPatient(null); setTreatmentQuery(""); setSelectedTreatments([]);
+    setOpen(false); setEditing(null); setError(""); setPatientQuery(""); setPatientResults([]); setSelectedPatient(null); setTreatmentQuery(""); setSelectedTreatment(""); setTreatmentOpen(false);
   }
 
   async function deleteAppointment(appointment: Appointment) {

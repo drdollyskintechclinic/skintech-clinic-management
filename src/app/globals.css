@@ -93,3 +93,9 @@ h2 { margin-top: 0; }
 .appointments-header-actions label { display: grid; gap: .35rem; font-weight: 700; font-size: .85rem; }
 .appointments-header-actions input { width: 12rem; border: 1px solid var(--line); border-radius: .45rem; padding: .7rem .8rem; background: white; color: var(--ink); }
 @media (max-width: 700px) { .appointments-header { flex-direction: column; align-items: stretch; } .appointments-header-actions { flex-wrap: wrap; } .appointments-header-actions input { width: 100%; } }
+
+.patient-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; margin-bottom:1rem; }
+.patient-summary > div { display:grid; gap:.25rem; }
+.patient-summary small { color:var(--muted); }
+.success { color:#166534; background:#ecfdf5; border:1px solid #bbf7d0; border-radius:.5rem; padding:.75rem 1rem; }
+@media (max-width:700px) { .patient-summary { grid-template-columns:1fr; } }

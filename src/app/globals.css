@@ -134,3 +134,51 @@ h2 { margin-top: 0; }
   .patient-summary .eyebrow { display: block !important; color: #000 !important; font-size: 10px; }
   .patient-summary strong, .patient-summary small { font-size: 11px; color: #000 !important; }
 }
+
+
+.print-only { display: none; }
+
+@media print {
+  .screen-only { display: none !important; }
+  .print-only { display: block !important; }
+  .page-header { display: none !important; }
+  .consultation-print-header { margin-bottom: 8px !important; }
+  .patient-summary { margin-bottom: 8px !important; padding: 8px !important; gap: .5rem !important; }
+  .consultation-document { padding: 10px !important; }
+  .consultation-document .form-header { display: none !important; }
+  .consultation-field { margin-bottom: 6px !important; }
+  .consultation-field textarea,
+  .consultation-field input { display: none !important; }
+  .consultation-field .print-value {
+    display: block !important;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 11px;
+    line-height: 1.3;
+    padding: 2px 0;
+    color: #000;
+  }
+  .consultation-field-label { margin-bottom: 2px !important; }
+  .prescription-print-value {
+    min-height: 0;
+    white-space: pre-wrap !important;
+  }
+  .doctor-signature {
+    margin-top: 18px;
+    margin-left: auto;
+    width: 190px;
+    text-align: center;
+    page-break-inside: avoid;
+  }
+  .signature-line {
+    height: 42px;
+    border-bottom: 1px solid #000;
+    margin-bottom: 4px;
+  }
+  .doctor-signature strong,
+  .doctor-signature span {
+    display: block;
+    font-size: 10px;
+  }
+  .doctor-signature span { margin-top: 2px; }
+}

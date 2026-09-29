@@ -69,7 +69,7 @@ export default function UpcomingAppointmentsPage() {
       {loading ? <div className="empty-state"><strong>Loading appointments...</strong></div> :
         appointments.length === 0 ? <div className="empty-state"><strong>No upcoming appointments</strong><span>Future appointments will appear here when they are scheduled.</span></div> :
         <div className="lead-table appointment-table">
-          <div className="lead-row lead-head"><span>Date</span><span>Time</span><span>Appointment</span><span>Patient</span><span>Doctor</span><span>Treatment</span><span>Status</span></div>
+          <div className="lead-row lead-head"><span>Date</span><span>Time</span><span>Appointment</span><span>Patient</span><span>Doctor</span><span>Treatment</span><span>Status</span><span>Actions</span></div>
           {appointments.map((appointment) => <div className="lead-row" key={appointment.id}>
             <strong>{displayDate(appointment.appointmentDate)}</strong>
             <strong>{appointment.appointmentTime}</strong>
@@ -77,7 +77,7 @@ export default function UpcomingAppointmentsPage() {
             <span><strong>{appointment.patientNumber}</strong><br />{appointment.patientName}</span>
             <span>{appointment.doctorName}</span>
             <span>{appointment.treatment || "—"}</span>
-            <span>{statuses[appointment.status] || appointment.status}</span>
+            <span>{statuses[appointment.status] || appointment.status}</span><span className="row-actions"><a className="text-button" href={`/app/appointments?edit=${encodeURIComponent(appointment.id)}&date=${encodeURIComponent(appointment.appointmentDate)}`}>Edit</a></span>
           </div>)}
         </div>}
     </div>

@@ -80,6 +80,7 @@ export default function AppointmentsPage() {
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [treatmentQuery, setTreatmentQuery] = useState("");
   const [selectedTreatments, setSelectedTreatments] = useState<string[]>([]);
+  const [treatmentOpen, setTreatmentOpen] = useState(false);
   async function load() {
     const response = await fetch(`/api/appointments?date=${encodeURIComponent(date)}`, { cache: "no-store" });
     if (response.ok) {
@@ -131,6 +132,7 @@ export default function AppointmentsPage() {
     setSelectedPatient(null);
     setTreatmentQuery("");
     setSelectedTreatments([]);
+    setTreatmentOpen(false);
   }
 
   function openEdit(appointment: Appointment) {
@@ -139,6 +141,7 @@ export default function AppointmentsPage() {
     setSelectedPatient({ id: appointment.patientId, patientNumber: appointment.patientNumber, name: appointment.patientName, mobile: appointment.mobile });
     setTreatmentQuery("");
     setSelectedTreatments(appointment.treatment ? appointment.treatment.split(",").map((item) => item.trim()).filter(Boolean) : []);
+    setTreatmentOpen(false);
   }
 
   function closeForm() {
@@ -222,9 +225,11 @@ export default function AppointmentsPage() {
         <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? "Consultation"}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
         <label className="full">Treatment / purpose <span className="optional">optional · multiple selection</span>
           <div className="treatment-select">
-            <input type="text" value={treatmentQuery} onChange={(event) => setTreatmentQuery(event.target.value)} placeholder={selectedTreatments.length ? selectedTreatments.join(", ") : "Select procedures"} autoComplete="off" />
-            <div className="card search-results treatment-dropdown">
-              <input type="text" value={treatmentQuery} onChange={(event) => setTreatmentQuery(event.target.value)} placeholder="Search procedure..." autoComplete="off" />
+            <button type="button" className="treatment-trigger" onClick={() => setTreatmentOpen((open) => !open)}>
+              <span>{selectedTreatments.length ? selectedTreatments.join(", ") : "Select procedures"}</span><span>▾</span>
+            </button>
+            {treatmentOpen && <div className="card search-results treatment-dropdown">
+              <input type="text" value={treatmentQuery} onChange={(event) => setTreatmentQuery(event.target.value)} placeholder="Search procedure..." autoComplete="off" autoFocus />
               <div className="treatment-options">
                 {treatmentOptions.filter((treatment) => treatment.toLowerCase().includes(treatmentQuery.trim().toLowerCase())).map((treatment) => (
                   <label className="treatment-option" key={treatment}>
@@ -233,7 +238,7 @@ export default function AppointmentsPage() {
                   </label>
                 ))}
               </div>
-            </div>
+            </div>}
           </div>
           <small className="muted">{selectedTreatments.length ? selectedTreatments.join(", ") : "No procedure selected"}</small>
           <input type="hidden" name="treatment" value={selectedTreatments.join(", ")} />

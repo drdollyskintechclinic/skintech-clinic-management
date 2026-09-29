@@ -26,7 +26,7 @@ async function listTemplates(organizationId: string) {
       action: "CONSULTATION_TEMPLATE_CREATED", metadata: { ...template, active: true, sortOrder: index }
     }));
     await db.auditEvent.createMany({ data });
-    return data.map((event) => event.metadata as Record<string, unknown>);
+    return data.map((event) => ({ id: event.resourceId, ...(event.metadata as Record<string, unknown>) }));
   }
   const latest = new Map<string, any>();
   for (const event of events) {

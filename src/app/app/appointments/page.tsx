@@ -79,7 +79,7 @@ export default function AppointmentsPage() {
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<Appointment | null>(null);
   const [treatmentQuery, setTreatmentQuery] = useState("");
-  const [selectedTreatments, setSelectedTreatments] = useState<string[]>([]);
+  const [selectedTreatment, setSelectedTreatment] = useState("");
   const [treatmentOpen, setTreatmentOpen] = useState(false);
   async function load() {
     const response = await fetch(`/api/appointments?date=${encodeURIComponent(date)}`, { cache: "no-store" });
@@ -131,7 +131,7 @@ export default function AppointmentsPage() {
     setPatientResults([]);
     setSelectedPatient(null);
     setTreatmentQuery("");
-    setSelectedTreatments([]);
+    setSelectedTreatment("");
     setTreatmentOpen(false);
   }
 
@@ -140,16 +140,12 @@ export default function AppointmentsPage() {
     setOpen(true); setError(""); setPatientQuery(""); setPatientResults([]);
     setSelectedPatient({ id: appointment.patientId, patientNumber: appointment.patientNumber, name: appointment.patientName, mobile: appointment.mobile });
     setTreatmentQuery("");
-    setSelectedTreatments(appointment.treatment ? appointment.treatment.split(",").map((item) => item.trim()).filter(Boolean) : []);
+    setSelectedTreatment(appointment.treatment?.split(",")[0]?.trim() ?? "");
     setTreatmentOpen(false);
   }
 
   function closeForm() {
     setOpen(false); setEditing(null); setError(""); setPatientQuery(""); setPatientResults([]); setSelectedPatient(null); setTreatmentQuery(""); setSelectedTreatments([]);
-  }
-
-  function toggleTreatment(treatment: string) {
-    setSelectedTreatments((current) => current.includes(treatment) ? current.filter((item) => item !== treatment) : [...current, treatment]);
   }
 
   async function deleteAppointment(appointment: Appointment) {
@@ -222,11 +218,21 @@ export default function AppointmentsPage() {
         <label>Date<input name="appointmentDate" type="date" required defaultValue={editing?.appointmentDate ?? date} /></label>
         <label>Time<input name="appointmentTime" type="time" required defaultValue={editing?.appointmentTime ?? ""} /></label>
         <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? "Consultation"}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
-        <label>Treatment / purpose <span className="optional">optional</span>
-          <select name="treatment" defaultValue={editing?.treatment ?? ""}>
-            <option value="">Select procedure</option>
-            {treatmentOptions.map((treatment) => <option key={treatment} value={treatment}>{treatment}</option>)}
-          </select>
+        <label>Treatment / purpose <span className="optional">optional · single selection</span>
+          <div className="treatment-select">
+            <button type="button" className="treatment-trigger" onClick={() => setTreatmentOpen((open) => !open)}>
+              <span>{selectedTreatment || "Select procedure"}</span><span>▾</span>
+            </button>
+            {treatmentOpen && <div className="card search-results treatment-dropdown">
+              <input type="text" value={treatmentQuery} onChange={(event) => setTreatmentQuery(event.target.value)} placeholder="Search procedure..." autoComplete="off" autoFocus />
+              <div className="treatment-options">
+                {treatmentOptions.filter((treatment) => treatment.toLowerCase().includes(treatmentQuery.trim().toLowerCase())).map((treatment) => (
+                  <button type="button" className="search-result" key={treatment} onClick={() => { setSelectedTreatment(treatment); setTreatmentQuery(""); setTreatmentOpen(false); }}>{treatment}</button>
+                ))}
+              </div>
+            </div>}
+          </div>
+          <input type="hidden" name="treatment" value={selectedTreatment} />
         </label>
         <label className="full">Notes <span className="optional">optional</span><textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Additional appointment notes..." /></label>
         {editing && <label>Status<select name="status" defaultValue={editing.status}>{Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}

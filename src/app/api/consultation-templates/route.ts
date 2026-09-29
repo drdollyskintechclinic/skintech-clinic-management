@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requirePermission } from "@/server/auth/authorization";
 import { db } from "@/server/db/prisma";
@@ -14,19 +15,60 @@ const schema = z.object({
   sortOrder: z.number().int().default(0)
 });
 
-async function listTemplates(organizationId: string) {
+async function listTemplates(organizationId: string, actorUserId: string) {
   const events = await db.auditEvent.findMany({
     where: { organizationId, resourceType: "CONSULTATION_TEMPLATE" },
     orderBy: { occurredAt: "desc" },
-    take: 1000
+    take: 2000
   });
-  if (events.length === 0) {
-    const data = starterTemplates.map((template, index) => ({
-      organizationId, actorUserId: null, resourceType: "CONSULTATION_TEMPLATE", resourceId: crypto.randomUUID(),
-      action: "CONSULTATION_TEMPLATE_CREATED", metadata: { ...template, active: true, sortOrder: index }
-    }));
-    await db.auditEvent.createMany({ data });
-    return data.map((event) => ({ id: event.resourceId, ...(event.metadata as Record<string, unknown>) }));
+
+  const resetMarker = await db.auditEvent.findFirst({
+    where: { organizationId, resourceType: "CONSULTATION_TEMPLATE_RESET", resourceId: "starter-v1" }
+  });
+
+  if (!resetMarker) {
+    const seeded = await db.$transaction(async (tx) => {
+      await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${"skintech-consultation-template-reset:" + organizationId}))`);
+
+      const marker = await tx.auditEvent.findFirst({
+        where: { organizationId, resourceType: "CONSULTATION_TEMPLATE_RESET", resourceId: "starter-v1" }
+      });
+      if (marker) return null;
+
+      const currentEvents = await tx.auditEvent.findMany({
+        where: { organizationId, resourceType: "CONSULTATION_TEMPLATE" },
+        select: { resourceId: true }
+      });
+      const deleteEvents = currentEvents
+        .filter((event) => event.resourceId)
+        .map((event) => ({
+          organizationId,
+          actorUserId,
+          resourceType: "CONSULTATION_TEMPLATE",
+          resourceId: event.resourceId as string,
+          action: "CONSULTATION_TEMPLATE_DELETED",
+          metadata: { id: event.resourceId, reason: "One-time starter template reset" }
+        }));
+      if (deleteEvents.length) await tx.auditEvent.createMany({ data: deleteEvents });
+
+      const data = starterTemplates.map((template, index) => ({
+        organizationId, actorUserId, resourceType: "CONSULTATION_TEMPLATE",
+        resourceId: "starter-v1-" + String(index + 1).padStart(3, "0"),
+        action: "CONSULTATION_TEMPLATE_CREATED",
+        metadata: { id: "starter-v1-" + String(index + 1).padStart(3, "0"), ...template, active: true, sortOrder: index }
+      }));
+      await tx.auditEvent.createMany({ data });
+      await tx.auditEvent.create({
+        data: {
+          organizationId, actorUserId, resourceType: "CONSULTATION_TEMPLATE_RESET",
+          resourceId: "starter-v1", action: "CONSULTATION_TEMPLATE_RESET_COMPLETED",
+          metadata: { templateCount: starterTemplates.length }
+        }
+      });
+      return data.map((event) => event.metadata as Record<string, unknown>);
+    });
+
+    if (seeded) return seeded;
   }
   const latest = new Map<string, any>();
   for (const event of events) {
@@ -41,7 +83,7 @@ async function listTemplates(organizationId: string) {
 
 export async function GET() {
   const user = await requirePermission("clinical.read");
-  return NextResponse.json({ templates: await listTemplates(user.organizationId) });
+  return NextResponse.json({ templates: await listTemplates(user.organizationId, user.id) });
 }
 
 export async function POST(request: Request) {

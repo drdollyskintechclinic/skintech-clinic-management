@@ -68,6 +68,9 @@ model StaffProfile {
   scopeKey         String
   employeeCode     String?
   jobTitle         String?
+  contactNumber    String?
+  degree           String?
+  speciality       String?
   isActive         Boolean         @default(true)
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
@@ -113,7 +116,7 @@ model UserRole {
   assignedAt       DateTime        @default(now())
   assignedByUserId String?         @db.Uuid
   user             User            @relation(fields: [userId], references: [id], onDelete: Restrict)
-  role             Role            @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  role             Role             @relation(fields: [roleId], references: [id], onDelete: Restrict)
   organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   clinicLocation   ClinicLocation? @relation(fields: [clinicLocationId], references: [id], onDelete: Restrict)
 
@@ -139,7 +142,6 @@ model AuditEvent {
   @@index([resourceType, resourceId])
 }
 
-// Auth.js adapter tables. Credentials login uses passwordHash above; OAuth can be added later.
 model Account {
   id                String  @id @default(cuid())
   userId            String  @db.Uuid

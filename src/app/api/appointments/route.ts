@@ -109,13 +109,61 @@ async function saveAppointmentEvent(user: { id: string; organizationId: string }
   });
 }
 
+function indiaDateTime() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return {
+    date: `${values.year}-${values.month}-${values.day}`,
+    time: `${values.hour}:${values.minute}`
+  };
+}
+
 export async function GET(request: Request) {
   const user = await requirePermission("reception.manage");
   const params = new URL(request.url).searchParams;
   const date = params.get("date") || undefined;
+  const upcoming = params.get("upcoming") === "true";
+  const page = Math.max(1, Number(params.get("page") || "1"));
+  const pageSize = Math.min(50, Math.max(1, Number(params.get("pageSize") || "10")));
   const doctors = await doctorOptions(user.organizationId, user.clinicLocationId ?? null);
   const appointments = await currentAppointments(user.organizationId, date);
-  return NextResponse.json({ doctors, appointments });
+
+  if (!upcoming) return NextResponse.json({ doctors, appointments });
+
+  const now = indiaDateTime();
+  const upcomingAll = appointments
+    .filter((appointment) => {
+      if (["COMPLETED", "CANCELLED", "NO_SHOW"].includes(appointment.status)) return false;
+      return appointment.appointmentDate > now.date ||
+        (appointment.appointmentDate === now.date && appointment.appointmentTime >= now.time);
+    })
+    .sort((a, b) => {
+      const dateCompare = a.appointmentDate.localeCompare(b.appointmentDate);
+      return dateCompare || a.appointmentTime.localeCompare(b.appointmentTime);
+    });
+
+  const total = upcomingAll.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * pageSize;
+
+  return NextResponse.json({
+    doctors,
+    appointments,
+    upcomingAppointments: upcomingAll.slice(start, start + pageSize),
+    upcomingTotal: total,
+    upcomingPage: safePage,
+    upcomingPageSize: pageSize,
+    upcomingTotalPages: totalPages
+  });
 }
 
 export async function POST(request: Request) {

@@ -218,31 +218,11 @@ export default function AppointmentsPage() {
         <label>Date<input name="appointmentDate" type="date" required defaultValue={editing?.appointmentDate ?? date} /></label>
         <label>Time<input name="appointmentTime" type="time" required defaultValue={editing?.appointmentTime ?? ""} /></label>
         <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? "Consultation"}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
-        <label>Treatment / purpose <span className="optional">optional · single selection</span>
-          <div className="treatment-select">
-            <input
-              type="text"
-              value={treatmentOpen ? treatmentQuery : selectedTreatment}
-              onFocus={() => { setTreatmentOpen(true); setTreatmentQuery(""); }}
-              onChange={(event) => { setTreatmentQuery(event.target.value); setTreatmentOpen(true); }}
-              placeholder="Search procedure..."
-              autoComplete="off"
-            />
-            {treatmentOpen && <div className="card search-results treatment-dropdown">
-              {treatmentOptions.filter((treatment) => treatment.toLowerCase().includes(treatmentQuery.trim().toLowerCase())).map((treatment) => (
-                <button
-                  type="button"
-                  className="search-result"
-                  key={treatment}
-                  onClick={() => { setSelectedTreatment(treatment); setTreatmentQuery(""); setTreatmentOpen(false); }}
-                >
-                  {treatment}
-                </button>
-              ))}
-              {treatmentOptions.filter((treatment) => treatment.toLowerCase().includes(treatmentQuery.trim().toLowerCase())).length === 0 && <span className="muted">No procedure found</span>}
-            </div>}
-          </div>
-          <input type="hidden" name="treatment" value={selectedTreatment} />
+        <label>Treatment / purpose <span className="optional">optional</span>
+          <select name="treatment" value={selectedTreatment} onChange={(event) => setSelectedTreatment(event.target.value)}>
+            <option value="">Select procedure</option>
+            {treatmentOptions.map((treatment) => <option key={treatment} value={treatment}>{treatment}</option>)}
+          </select>
         </label>
         <label className="full">Notes <span className="optional">optional</span><textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Additional appointment notes..." /></label>
         {editing && <label>Status<select name="status" defaultValue={editing.status}>{Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}

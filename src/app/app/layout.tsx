@@ -7,11 +7,11 @@ const navigation = [
   { href: "/app/leads", label: "Leads & Enquiries" },
   { href: "/app/patients", label: "Patients" },
   { href: "/app/appointments", label: "Appointments" },
+  { href: "/app/staff", label: "Doctors & Staff" },
 ];
 
 export default async function ApplicationLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const user = await requireAuth();
-
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -19,10 +19,7 @@ export default async function ApplicationLayout({ children }: Readonly<{ childre
         <nav className="nav" aria-label="Application navigation">
           {navigation.map((item) => <Link key={item.href} href={item.href}>{item.label}</Link>)}
         </nav>
-        <div className="sidebar-footer">
-          <small>Signed in as</small>
-          <strong>{user.email}</strong>
-        </div>
+        <div className="sidebar-footer"><small>Signed in as</small><strong>{user.email}</strong></div>
       </aside>
       <main className="content">{children}</main>
     </div>

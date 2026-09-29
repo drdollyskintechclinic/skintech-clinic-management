@@ -99,3 +99,12 @@ h2 { margin-top: 0; }
 .patient-summary small { color:var(--muted); }
 .success { color:#166534; background:#ecfdf5; border:1px solid #bbf7d0; border-radius:.5rem; padding:.75rem 1rem; }
 @media (max-width:700px) { .patient-summary { grid-template-columns:1fr; } }
+
+
+/* Consultation form hierarchy */
+.consultation-field { position: relative; gap: .55rem !important; }
+.consultation-field-label { display: block; font-size: 1rem; font-weight: 800; color: var(--brand-dark); letter-spacing: .01em; padding-left: .7rem; border-left: 4px solid var(--brand); line-height: 1.35; }
+.consultation-field textarea { min-height: 110px; font-size: .95rem; line-height: 1.5; }
+.consultation-field input { font-size: .95rem; }
+.template-select { margin-top: .05rem; font-size: .88rem !important; font-weight: 600 !important; background: #f7faf9 !important; border-color: #cbdad5 !important; }
+.consultation-field:focus-within .consultation-field-label { color: var(--brand); }

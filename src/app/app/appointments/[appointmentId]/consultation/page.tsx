@@ -29,6 +29,7 @@ export default function ConsultationPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [hasSavedConsultation, setHasSavedConsultation] = useState(false);
   const [error, setError] = useState("");
   const [templates, setTemplates] = useState<Template[]>([]);
 
@@ -38,6 +39,7 @@ export default function ConsultationPage() {
     if (!response.ok) { setError(data.error ?? "Unable to load consultation."); setLoading(false); return; }
     setAppointment(data.appointment);
     setConsultation(data.consultation ?? {});
+    setHasSavedConsultation(Boolean(data.consultation));
     const templateResponse = await fetch("/api/consultation-templates", { cache: "no-store" });
     if (templateResponse.ok) setTemplates((await templateResponse.json()).templates);
     setLoading(false);
@@ -47,6 +49,10 @@ export default function ConsultationPage() {
 
   function applyTemplate(field: keyof Consultation, value: string) {
     setConsultation((current) => ({ ...current, [field]: value }));
+  }
+
+  function printConsultation() {
+    window.print();
   }
 
   function templateSelect(field: keyof Consultation) {
@@ -72,7 +78,7 @@ export default function ConsultationPage() {
     const data = await response.json();
     setSaving(false);
     if (!response.ok) { setError(data.error ?? "Unable to save consultation."); return; }
-    setConsultation(data.consultation); setSaved(true);
+    setConsultation(data.consultation); setSaved(true); setHasSavedConsultation(true);
   }
 
   if (loading) return <p className="muted">Loading consultation…</p>;
@@ -82,11 +88,20 @@ export default function ConsultationPage() {
     <p className="eyebrow">Clinical record</p>
     <div className="page-header">
       <div><h1>Consultation</h1><p className="lead">{appointment.appointmentNumber} · {displayDate(appointment.appointmentDate)} · {appointment.appointmentTime}</p></div>
-      <Link className="secondary-button" href={"/app/appointments?date=" + encodeURIComponent(appointment.appointmentDate)}>Back to appointments</Link>
+      <div className="form-actions print-hide">
+        <button type="button" className="secondary-button" onClick={printConsultation} disabled={!hasSavedConsultation}>Print consultation</button>
+        <Link className="secondary-button" href={"/app/appointments?date=" + encodeURIComponent(appointment.appointmentDate)}>Back to appointments</Link>
+      </div>
     </div>
 
     {error && <p className="error">{error}</p>}
     {saved && <p className="success">Consultation saved successfully.</p>}
+
+    <div className="consultation-print-header">
+      <strong>Dr Dolly's Skintech Clinic</strong>
+      <span>Pratap Nagar, Nagpur, Maharashtra 440022</span>
+      <span>Clinical Consultation Record</span>
+    </div>
 
     <div className="card patient-summary">
       <div><span className="eyebrow">Patient</span><strong>{appointment.patientNumber} · {appointment.patientName}</strong><small>{appointment.mobile}</small></div>
@@ -94,7 +109,7 @@ export default function ConsultationPage() {
       <div><span className="eyebrow">Appointment status</span><strong>{appointment.status.replaceAll("_", " ")}</strong></div>
     </div>
 
-    <div className="card form-card">
+    <div className="card form-card consultation-document">
       <div className="form-header"><div><h2>Clinical consultation</h2><p className="muted">Record the clinical assessment and plan for this visit.</p></div></div>
       <form className="lead-form" onSubmit={submit}>
         <label className="consultation-field full"><span className="consultation-field-label">Chief complaint / patient's concern</span>
@@ -128,8 +143,9 @@ export default function ConsultationPage() {
         <label className="consultation-field"><span className="consultation-field-label">Follow-up date</span>
           <input name="followUpDate" type="date" defaultValue={consultation.followUpDate ?? ""} />
         </label>
-        <div className="form-actions full">
+        <div className="form-actions full print-hide">
           <button className="button" disabled={saving}>{saving ? "Saving..." : "Save consultation"}</button>
+          <button type="button" className="secondary-button" onClick={printConsultation} disabled={!hasSavedConsultation}>Print consultation</button>
           <Link className="secondary-button" href={"/app/appointments?date=" + encodeURIComponent(appointment.appointmentDate)}>Cancel</Link>
         </div>
       </form>

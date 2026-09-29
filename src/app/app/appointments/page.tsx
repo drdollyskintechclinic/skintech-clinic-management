@@ -112,19 +112,6 @@ export default function AppointmentsPage() {
     await load();
   }
 
-  async function changeStatus(appointment: Appointment, status: string) {
-    setError("");
-    const response = await fetch("/api/appointments", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ appointmentId: appointment.id, action: "status", status }) });
-    const result = await response.json();
-    if (!response.ok) { setError(result.error ?? "Unable to update appointment status."); return; }
-    await load();
-  }
-
-  function statusActions(status: string) {
-    const map: Record<string,string[]> = { SCHEDULED:["CONFIRMED","CANCELLED","NO_SHOW"], CONFIRMED:["CHECKED_IN","CANCELLED","NO_SHOW"], CHECKED_IN:["IN_CONSULTATION","CANCELLED","NO_SHOW"], IN_CONSULTATION:["COMPLETED"], COMPLETED:[], CANCELLED:[], NO_SHOW:[] };
-    return map[status] ?? [];
-  }
-
   return <>
     <p className="eyebrow">Clinic schedule</p>
     <div className="page-header">
@@ -165,7 +152,7 @@ export default function AppointmentsPage() {
       {appointments.length === 0 ? <div className="empty-state"><strong>No appointments for this date</strong><span>Create an appointment to build the clinic schedule.</span></div> : <div className="lead-table appointment-table">
         <div className="lead-row lead-head"><span>Appointment</span><span>Time</span><span>Patient</span><span>Mobile</span><span>Doctor</span><span>Type</span><span>Treatment</span><span>Status</span></div>
         {appointments.slice().sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime)).map((appointment) => <div className="lead-row" key={appointment.id}>
-          <strong>{appointment.appointmentNumber}</strong><strong>{appointment.appointmentTime}</strong><span><strong>{appointment.patientNumber}</strong><br />{appointment.patientName}</span><span>{appointment.mobile}</span><span>{appointment.doctorName}</span><span>{appointment.appointmentType}</span><span>{appointment.treatment || "—"}</span><span>{statuses[appointment.status] || appointment.status}</span><span className="row-actions"><button className="text-button" type="button" onClick={() => openEdit(appointment)}>Edit</button>{statusActions(appointment.status).map((nextStatus) => <button key={nextStatus} className={nextStatus === "CANCELLED" || nextStatus === "NO_SHOW" ? "danger-button" : "text-button"} type="button" onClick={() => void changeStatus(appointment, nextStatus)}>{statuses[nextStatus]}</button>)}</span>
+          <strong>{appointment.appointmentNumber}</strong><strong>{appointment.appointmentTime}</strong><span><strong>{appointment.patientNumber}</strong><br />{appointment.patientName}</span><span>{appointment.mobile}</span><span>{appointment.doctorName}</span><span>{appointment.appointmentType}</span><span>{appointment.treatment || "—"}</span><span>{statuses[appointment.status] || appointment.status}</span><span className="row-actions"><button className="text-button" type="button" onClick={() => openEdit(appointment)}>Edit</button></span>
         </div>)}
       </div>}
     </div>

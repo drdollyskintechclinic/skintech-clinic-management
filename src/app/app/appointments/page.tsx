@@ -150,6 +150,7 @@ export default function AppointmentsPage() {
         <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? "Consultation"}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
         <label>Treatment / purpose <span className="optional">optional</span><input name="treatment" defaultValue={editing?.treatment ?? ""} placeholder="e.g. Hair PRP, Hydrafacial, Consultation" /></label>
         <label className="full">Notes <span className="optional">optional</span><textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Additional appointment notes..." /></label>
+        {editing && <label>Status<select name="status" defaultValue={editing.status}>{Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
         <div className="form-actions full"><button className="button" disabled={saving}>{saving ? "Saving..." : editing ? "Save changes" : "Create appointment"}</button><button className="secondary-button" type="button" onClick={closeForm}>Cancel</button></div>
       </form>
     </div>}

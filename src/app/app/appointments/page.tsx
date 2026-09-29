@@ -177,7 +177,6 @@ export default function AppointmentsPage() {
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const data = Object.fromEntries(form.entries());
-    data.treatment = selectedTreatments.join(", ");
 
     const response = await fetch("/api/appointments", {
       method: editing ? "PATCH" : "POST",
@@ -223,25 +222,11 @@ export default function AppointmentsPage() {
         <label>Date<input name="appointmentDate" type="date" required defaultValue={editing?.appointmentDate ?? date} /></label>
         <label>Time<input name="appointmentTime" type="time" required defaultValue={editing?.appointmentTime ?? ""} /></label>
         <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? "Consultation"}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
-        <label className="full">Treatment / purpose <span className="optional">optional · multiple selection</span>
-          <div className="treatment-select">
-            <button type="button" className="treatment-trigger" onClick={() => setTreatmentOpen((open) => !open)}>
-              <span>{selectedTreatments.length ? selectedTreatments.join(", ") : "Select procedures"}</span><span>▾</span>
-            </button>
-            {treatmentOpen && <div className="card search-results treatment-dropdown">
-              <input type="text" value={treatmentQuery} onChange={(event) => setTreatmentQuery(event.target.value)} placeholder="Search procedure..." autoComplete="off" autoFocus />
-              <div className="treatment-options">
-                {treatmentOptions.filter((treatment) => treatment.toLowerCase().includes(treatmentQuery.trim().toLowerCase())).map((treatment) => (
-                  <label className="treatment-option" key={treatment}>
-                    <input type="checkbox" checked={selectedTreatments.includes(treatment)} onChange={() => toggleTreatment(treatment)} />
-                    <span>{treatment}</span>
-                  </label>
-                ))}
-              </div>
-            </div>}
-          </div>
-          <small className="muted">{selectedTreatments.length ? selectedTreatments.join(", ") : "No procedure selected"}</small>
-          <input type="hidden" name="treatment" value={selectedTreatments.join(", ")} />
+        <label>Treatment / purpose <span className="optional">optional</span>
+          <select name="treatment" defaultValue={editing?.treatment ?? ""}>
+            <option value="">Select procedure</option>
+            {treatmentOptions.map((treatment) => <option key={treatment} value={treatment}>{treatment}</option>)}
+          </select>
         </label>
         <label className="full">Notes <span className="optional">optional</span><textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Additional appointment notes..." /></label>
         {editing && <label>Status<select name="status" defaultValue={editing.status}>{Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}

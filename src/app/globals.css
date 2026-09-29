@@ -108,3 +108,29 @@ h2 { margin-top: 0; }
 .consultation-field input { font-size: .95rem; }
 .template-select { margin-top: .05rem; font-size: .88rem !important; font-weight: 600 !important; background: #f7faf9 !important; border-color: #cbdad5 !important; }
 .consultation-field:focus-within .consultation-field-label { color: var(--brand); }
+
+
+.consultation-print-header { display: none; }
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: white !important; color: #000 !important; }
+  .sidebar, .print-hide, .template-select, .eyebrow, .lead, .success, .error { display: none !important; }
+  .shell { display: block; min-height: auto; }
+  .content { max-width: none; padding: 0; width: 100%; }
+  .consultation-print-header { display: grid; gap: 2px; text-align: center; margin-bottom: 12px; color: #000; }
+  .consultation-print-header strong { font-size: 18px; }
+  .consultation-print-header span { font-size: 11px; }
+  .patient-summary, .consultation-document { box-shadow: none !important; border: 1px solid #999 !important; border-radius: 0 !important; }
+  .patient-summary { margin-bottom: 10px !important; padding: 10px !important; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .consultation-document { padding: 12px !important; }
+  .consultation-document .form-header p { display: none; }
+  .consultation-document .form-header { margin-bottom: 8px; }
+  .consultation-document .lead-form { display: block; }
+  .consultation-field { display: block !important; margin-bottom: 10px; page-break-inside: avoid; }
+  .consultation-field-label { display: block; border-left: 0; border-bottom: 1px solid #999; padding: 0 0 3px; margin-bottom: 4px; color: #000 !important; font-size: 11px !important; }
+  .consultation-field textarea, .consultation-field input { display: block; border: 0 !important; padding: 2px 0 !important; background: white !important; color: #000 !important; min-height: 0 !important; resize: none; font-size: 11px !important; line-height: 1.35; }
+  .consultation-field textarea { overflow: visible; }
+  .patient-summary .eyebrow { display: block !important; color: #000 !important; font-size: 10px; }
+  .patient-summary strong, .patient-summary small { font-size: 11px; color: #000 !important; }
+}

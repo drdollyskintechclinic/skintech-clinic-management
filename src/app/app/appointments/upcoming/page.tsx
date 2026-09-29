@@ -35,6 +35,7 @@ export default function UpcomingAppointmentsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -51,6 +52,23 @@ export default function UpcomingAppointmentsPage() {
     void load();
   }, [page]);
 
+  async function removeScheduledAppointment(appointment: Appointment) {
+    if (appointment.status !== "SCHEDULED") return;
+    if (!window.confirm(`Delete appointment ${appointment.appointmentNumber}?`)) return;
+    setError("");
+    const response = await fetch("/api/appointments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ appointmentId: appointment.id }) });
+    const result = await response.json();
+    if (!response.ok) { setError(result.error ?? "Unable to delete appointment."); return; }
+    const refreshed = await fetch(`/api/appointments?upcoming=true&page=${page}&pageSize=10`, { cache: "no-store" });
+    if (refreshed.ok) {
+      const data = await refreshed.json();
+      setAppointments(data.upcomingAppointments);
+      setTotal(data.upcomingTotal);
+      setTotalPages(data.upcomingTotalPages);
+      if (page > data.upcomingTotalPages) setPage(data.upcomingTotalPages);
+    }
+  }
+
   return <>
     <p className="eyebrow">Appointment planning</p>
     <div className="page-header">
@@ -60,6 +78,8 @@ export default function UpcomingAppointmentsPage() {
       </div>
       <a className="secondary-button" href="/app/appointments">← Back to Appointments</a>
     </div>
+
+    {error && <p className="error">{error}</p>}
 
     <div className="stats">
       <section className="card"><span>Future appointments</span><strong>{total}</strong><small>scheduled ahead</small></section>
@@ -77,7 +97,7 @@ export default function UpcomingAppointmentsPage() {
             <span><strong>{appointment.patientNumber}</strong><br />{appointment.patientName}</span>
             <span>{appointment.doctorName}</span>
             <span>{appointment.treatment || "—"}</span>
-            <span>{statuses[appointment.status] || appointment.status}</span><span className="row-actions"><a className="text-button" href={`/app/appointments?edit=${encodeURIComponent(appointment.id)}&date=${encodeURIComponent(appointment.appointmentDate)}`}>Edit</a></span>
+            <span>{statuses[appointment.status] || appointment.status}</span><span className="row-actions"><a className="text-button" href={`/app/appointments?edit=${encodeURIComponent(appointment.id)}&date=${encodeURIComponent(appointment.appointmentDate)}`}>Edit</a>{appointment.status === "SCHEDULED" && <button className="danger-button" type="button" onClick={() => void removeScheduledAppointment(appointment)}>Delete</button>}</span>
           </div>)}
         </div>}
     </div>

@@ -273,3 +273,26 @@ export async function PATCH(request: Request) {
   const event = await saveAppointmentEvent(user, existing.id, "APPOINTMENT_UPDATED", metadata);
   return NextResponse.json({ appointment: serialize(event as AppointmentEvent) });
 }
+
+
+export async function DELETE(request: Request) {
+  const user = await requirePermission("reception.manage");
+  const body = await request.json();
+  const parsedId = z.string().uuid().safeParse(body.appointmentId);
+  if (!parsedId.success) return NextResponse.json({ error: "Invalid appointment." }, { status: 400 });
+
+  const existing = await findAppointment(user.organizationId, parsedId.data);
+  if (!existing) return NextResponse.json({ error: "Appointment not found." }, { status: 404 });
+
+  const today = indiaDateTime().date;
+  if (existing.appointmentDate < today) {
+    return NextResponse.json({ error: "Past appointments cannot be deleted." }, { status: 409 });
+  }
+  if (existing.status !== "SCHEDULED") {
+    return NextResponse.json({ error: "Only Scheduled appointments can be deleted." }, { status: 409 });
+  }
+
+  const metadata = { ...existing, status: "DELETED" };
+  await saveAppointmentEvent(user, existing.id, "APPOINTMENT_DELETED", metadata);
+  return NextResponse.json({ success: true });
+}

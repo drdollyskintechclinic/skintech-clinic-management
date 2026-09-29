@@ -85,7 +85,6 @@ export default function ConsultationPage() {
   if (!appointment) return <p className="error">{error || "Appointment not found."}</p>;
 
   return <>
-    <p className="eyebrow">Clinical record</p>
     <div className="page-header print-hide">
       <div><p className="eyebrow">Clinical record</p><p className="lead">{appointment.appointmentNumber} · {displayDate(appointment.appointmentDate)} · {appointment.appointmentTime}</p></div>
       <div className="form-actions print-hide">
@@ -106,7 +105,6 @@ export default function ConsultationPage() {
     <div className="card patient-summary">
       <div><span className="eyebrow">Patient</span><strong>{appointment.patientNumber} · {appointment.patientName}</strong><small>{appointment.mobile}</small></div>
       <div><span className="eyebrow">Doctor</span><strong>{appointment.doctorName}</strong><small>{appointment.appointmentType}{appointment.treatment ? " · " + appointment.treatment : ""}</small></div>
-      <div className="screen-only"><span className="eyebrow">Appointment status</span><strong>{appointment.status.replaceAll("_", " ")}</strong></div>
       <div className="print-only"><span className="eyebrow">Appointment</span><strong>{displayDate(appointment.appointmentDate)} · {appointment.appointmentTime}</strong></div>
     </div>
 

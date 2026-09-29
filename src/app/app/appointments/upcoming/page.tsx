@@ -14,6 +14,11 @@ type Appointment = {
   status: string;
 };
 
+function displayDate(value: string) {
+  const [year, month, day] = value.split("-");
+  return day && month && year ? `${day}-${month}-${year}` : value;
+}
+
 const statuses: Record<string, string> = {
   SCHEDULED: "Scheduled",
   CONFIRMED: "Confirmed",
@@ -66,7 +71,7 @@ export default function UpcomingAppointmentsPage() {
         <div className="lead-table appointment-table">
           <div className="lead-row lead-head"><span>Date</span><span>Time</span><span>Appointment</span><span>Patient</span><span>Doctor</span><span>Treatment</span><span>Status</span></div>
           {appointments.map((appointment) => <div className="lead-row" key={appointment.id}>
-            <strong>{appointment.appointmentDate}</strong>
+            <strong>{displayDate(appointment.appointmentDate)}</strong>
             <strong>{appointment.appointmentTime}</strong>
             <strong>{appointment.appointmentNumber}</strong>
             <span><strong>{appointment.patientNumber}</strong><br />{appointment.patientName}</span>

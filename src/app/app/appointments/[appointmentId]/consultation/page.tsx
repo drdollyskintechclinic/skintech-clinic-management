@@ -97,35 +97,35 @@ export default function ConsultationPage() {
     <div className="card form-card">
       <div className="form-header"><div><h2>Clinical consultation</h2><p className="muted">Record the clinical assessment and plan for this visit.</p></div></div>
       <form className="lead-form" onSubmit={submit}>
-        <label className="full">Chief complaint / patient's concern
+        <label className="consultation-field full><span className="consultation-field-label">Chief complaint / patient's concern</span>
           {templateSelect("chiefComplaint")}
           <textarea name="chiefComplaint" rows={4} value={consultation.chiefComplaint ?? ""} onChange={(e) => applyTemplate("chiefComplaint", e.target.value)} placeholder="What brings the patient to the clinic?" />
         </label>
-        <label className="full">Examination / clinical findings
+        <label className="consultation-field full><span className="consultation-field-label">Examination / clinical findings</span>
           {templateSelect("examinationFindings")}
           <textarea name="examinationFindings" rows={5} value={consultation.examinationFindings ?? ""} onChange={(e) => applyTemplate("examinationFindings", e.target.value)} placeholder="Record relevant examination findings." />
         </label>
-        <label>Diagnosis / assessment
+        <label className="consultation-field><span className="consultation-field-label">Diagnosis / assessment</span>
           {templateSelect("diagnosis")}
           <textarea name="diagnosis" rows={4} value={consultation.diagnosis ?? ""} onChange={(e) => applyTemplate("diagnosis", e.target.value)} placeholder="Clinical assessment / diagnosis" />
         </label>
-        <label>Treatment advised
+        <label className="consultation-field><span className="consultation-field-label">Treatment advised</span>
           {templateSelect("treatmentAdvised")}
           <textarea name="treatmentAdvised" rows={4} value={consultation.treatmentAdvised ?? ""} onChange={(e) => applyTemplate("treatmentAdvised", e.target.value)} placeholder="Treatment plan and advice" />
         </label>
-        <label>Procedure performed
+        <label className="consultation-field><span className="consultation-field-label">Procedure performed</span>
           {templateSelect("procedurePerformed")}
           <textarea name="procedurePerformed" rows={4} value={consultation.procedurePerformed ?? ""} onChange={(e) => applyTemplate("procedurePerformed", e.target.value)} placeholder="Procedure performed during this visit" />
         </label>
-        <label>Prescription / medicines
+        <label className="consultation-field><span className="consultation-field-label">Prescription / medicines</span>
           {templateSelect("prescription")}
           <textarea name="prescription" rows={4} value={consultation.prescription ?? ""} onChange={(e) => applyTemplate("prescription", e.target.value)} placeholder="Medicine, dose, frequency and duration" />
         </label>
-        <label className="full">Doctor's notes
+        <label className="consultation-field full><span className="consultation-field-label">Doctor's notes</span>
           {templateSelect("doctorNotes")}
           <textarea name="doctorNotes" rows={4} value={consultation.doctorNotes ?? ""} onChange={(e) => applyTemplate("doctorNotes", e.target.value)} placeholder="Additional clinical notes" />
         </label>
-        <label>Follow-up date
+        <label className="consultation-field><span className="consultation-field-label">Follow-up date</span>
           <input name="followUpDate" type="date" defaultValue={consultation.followUpDate ?? ""} />
         </label>
         <div className="form-actions full">

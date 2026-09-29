@@ -50,6 +50,18 @@ export default function AppointmentsPage() {
 
   useEffect(() => { void load(); }, [date]);
 
+  useEffect(() => {
+    async function loadUpcomingCount() {
+      const response = await fetch("/api/appointments?upcoming=true&page=1&pageSize=1", { cache: "no-store" });
+      if (response.ok) {
+        const data = await response.json();
+        const element = document.getElementById("upcoming-count");
+        if (element) element.textContent = String(data.upcomingTotal);
+      }
+    }
+    void loadUpcomingCount();
+  }, []);
+
   const counts = useMemo(() => ({
     today: appointments.length,
     waiting: appointments.filter((item) => item.status === "CHECKED_IN").length
@@ -144,7 +156,7 @@ export default function AppointmentsPage() {
     <div className="stats">
       <section className="card"><span>Today</span><strong>{counts.today}</strong><small>appointments</small></section>
       <section className="card"><span>Waiting</span><strong>{counts.waiting}</strong><small>checked in</small></section>
-      <a className="card" href="/app/appointments/upcoming"><span>Upcoming</span><strong>View</strong><small>future appointments</small></a>
+      <a className="card" href="/app/appointments/upcoming"><span>Upcoming</span><strong id="upcoming-count">Loading…</strong><small>future appointments</small></a>
     </div>
 
     <div className="card table-card lead-list">

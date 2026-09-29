@@ -23,7 +23,7 @@ async function listTemplates(organizationId: string, actorUserId: string) {
   });
 
   const resetMarker = await db.auditEvent.findFirst({
-    where: { organizationId, resourceType: "CONSULTATION_TEMPLATE_RESET", resourceId: "starter-v1" }
+    where: { organizationId, resourceType: "CONSULTATION_TEMPLATE_RESET", resourceId: "starter-v2" }
   });
 
   if (!resetMarker) {
@@ -31,7 +31,7 @@ async function listTemplates(organizationId: string, actorUserId: string) {
       await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${"skintech-consultation-template-reset:" + organizationId}))`);
 
       const marker = await tx.auditEvent.findFirst({
-        where: { organizationId, resourceType: "CONSULTATION_TEMPLATE_RESET", resourceId: "starter-v1" }
+        where: { organizationId, resourceType: "CONSULTATION_TEMPLATE_RESET", resourceId: "starter-v2" }
       });
       if (marker) return null;
 
@@ -61,8 +61,8 @@ async function listTemplates(organizationId: string, actorUserId: string) {
       await tx.auditEvent.create({
         data: {
           organizationId, actorUserId, resourceType: "CONSULTATION_TEMPLATE_RESET",
-          resourceId: "starter-v1", action: "CONSULTATION_TEMPLATE_RESET_COMPLETED",
-          metadata: { templateCount: starterTemplates.length }
+          resourceId: "starter-v2", action: "CONSULTATION_TEMPLATE_RESET_COMPLETED",
+          metadata: { templateCount: starterTemplates.length, version: "starter-v2" }
         }
       });
       return data.map((event) => event.metadata as Record<string, unknown>);

@@ -17,6 +17,21 @@ const statuses: Record<string, string> = {
 };
 const appointmentTypes = ["Consultation", "Treatment", "Follow-up", "Procedure", "Other"];
 
+const timeSlots = Array.from({ length: 48 }, (_, index) => {
+  const minutes = index * 15;
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+});
+
+function formatTime(value: string) {
+  const [hourString, minute] = value.split(":");
+  const hour = Number(hourString);
+  const suffix = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minute} ${suffix}`;
+}
+
 const treatmentOptions = [
   "Consultation",
   "Follow-up",
@@ -216,7 +231,7 @@ export default function AppointmentsPage() {
         </label>
         <label>Doctor<select name="doctorUserId" required defaultValue={editing?.doctorUserId ?? ""}><option value="" disabled>Select doctor</option>{doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}</select></label>
         <label>Date<input name="appointmentDate" type="date" required defaultValue={editing?.appointmentDate ?? date} /></label>
-        <label>Time<input name="appointmentTime" type="time" required defaultValue={editing?.appointmentTime ?? ""} /></label>
+        <label>Time<select name="appointmentTime" required defaultValue={editing?.appointmentTime ?? ""}><option value="" disabled>Select time</option>{timeSlots.map((time) => <option key={time} value={time}>{formatTime(time)}</option>)}</select></label>
         <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? "Consultation"}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
         <label>Treatment / purpose <span className="optional">optional</span>
           <select name="treatment" value={selectedTreatment} onChange={(event) => setSelectedTreatment(event.target.value)}>

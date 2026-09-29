@@ -31,6 +31,15 @@ export default function AppointmentsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<Appointment | null>(null);
+  async function load() {
+    const response = await fetch(`/api/appointments?date=${encodeURIComponent(date)}`, { cache: "no-store" });
+    if (response.ok) {
+      const data = await response.json();
+      setAppointments(data.appointments);
+      setDoctors(data.doctors);
+    }
+  }
+
   async function searchPatients(query: string) {
     setPatientQuery(query);
     setSelectedPatient(null);

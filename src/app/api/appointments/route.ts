@@ -14,7 +14,8 @@ const appointmentSchema = z.object({
   appointmentTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid appointment time."),
   appointmentType: z.string().trim().min(2).max(100),
   treatment: z.string().trim().max(160).optional().or(z.literal("")),
-  notes: z.string().trim().max(2000).optional().or(z.literal(""))
+  notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  status: z.enum(statuses).optional()
 });
 
 type AppointmentData = z.infer<typeof appointmentSchema>;
@@ -196,10 +197,6 @@ export async function PATCH(request: Request) {
   const parsed = appointmentSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Please check the appointment details." }, { status: 400 });
 
-  if (["COMPLETED", "CANCELLED", "NO_SHOW"].includes(existing.status)) {
-    return NextResponse.json({ error: "Completed, cancelled or no-show appointments cannot be edited." }, { status: 409 });
-  }
-
   const patient = await patientForAppointment(user.organizationId, parsed.data.patientId);
   if (!patient) return NextResponse.json({ error: "Patient not found." }, { status: 404 });
 
@@ -222,7 +219,7 @@ export async function PATCH(request: Request) {
     patientName: patient.name,
     mobile: patient.mobile,
     doctorName: selectedDoctorName,
-    status: existing.status
+    status: parsed.data.status ?? existing.status
   };
 
   const event = await saveAppointmentEvent(user, existing.id, "APPOINTMENT_UPDATED", metadata);

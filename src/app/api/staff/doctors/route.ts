@@ -7,10 +7,12 @@ import { db } from "@/server/db/prisma";
 
 export const dynamic = "force-dynamic";
 
+const optionalPassword = z.preprocess((value) => value === "" ? undefined : value, z.string().min(12).max(128).optional());
+
 const doctorSchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(320),
-  password: z.string().min(12).max(128).optional(),
+  password: optionalPassword,
   contactNumber: z.string().trim().max(30).optional(),
   degree: z.string().trim().max(120).optional(),
   speciality: z.string().trim().max(160).optional()

@@ -31,13 +31,38 @@ export default function AppointmentsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<Appointment | null>(null);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
+  const [upcomingTotal, setUpcomingTotal] = useState(0);
+  const [upcomingPage, setUpcomingPage] = useState(1);
+  const [upcomingTotalPages, setUpcomingTotalPages] = useState(1);
+
+  async function loadUpcoming(page = upcomingPage) {
+    const response = await fetch(`/api/appointments?upcoming=true&page=${page}&pageSize=10`, { cache: "no-store" });
+    if (response.ok) {
+      const data = await response.json();
+      setUpcomingAppointments(data.upcomingAppointments);
+      setUpcomingTotal(data.upcomingTotal);
+      setUpcomingPage(data.upcomingPage);
+      setUpcomingTotalPages(data.upcomingTotalPages);
+    }
+  }
 
   async function load() {
-    const response = await fetch(`/api/appointments?date=${encodeURIComponent(date)}`, { cache: "no-store" });
+    const [response, upcomingResponse] = await Promise.all([
+      fetch(`/api/appointments?date=${encodeURIComponent(date)}`, { cache: "no-store" }),
+      fetch("/api/appointments?upcoming=true&page=1&pageSize=10", { cache: "no-store" })
+    ]);
     if (response.ok) {
       const data = await response.json();
       setAppointments(data.appointments);
       setDoctors(data.doctors);
+    }
+    if (upcomingResponse.ok) {
+      const data = await upcomingResponse.json();
+      setUpcomingAppointments(data.upcomingAppointments);
+      setUpcomingTotal(data.upcomingTotal);
+      setUpcomingPage(data.upcomingPage);
+      setUpcomingTotalPages(data.upcomingTotalPages);
     }
   }
 
@@ -50,6 +75,8 @@ export default function AppointmentsPage() {
   }
 
   useEffect(() => { void load(); }, [date]);
+
+  useEffect(() => { void loadUpcoming(upcomingPage); }, [upcomingPage]);
 
   const counts = useMemo(() => ({
     today: appointments.length,
@@ -145,7 +172,28 @@ export default function AppointmentsPage() {
     <div className="stats">
       <section className="card"><span>Today</span><strong>{counts.today}</strong><small>appointments</small></section>
       <section className="card"><span>Waiting</span><strong>{counts.waiting}</strong><small>checked in</small></section>
-      <section className="card"><span>Upcoming</span><strong>—</strong><small>next 7 days</small></section>
+      <section className="card"><span>Upcoming</span><strong>{upcomingTotal}</strong><small>future appointments</small></section>
+    </div>
+
+    <div className="card table-card lead-list">
+      <div className="form-header">
+        <div><h2>Upcoming Appointments</h2><p className="muted">All future appointments, sorted by date and time.</p></div>
+        <strong>{upcomingTotal} total</strong>
+      </div>
+      {upcomingAppointments.length === 0 ? <div className="empty-state"><strong>No upcoming appointments</strong><span>Future appointments will appear here automatically.</span></div> : <div className="lead-table appointment-table">
+        <div className="lead-row lead-head"><span>Date</span><span>Time</span><span>Appointment</span><span>Patient</span><span>Doctor</span><span>Treatment</span><span>Status</span><span>Actions</span></div>
+        {upcomingAppointments.map((appointment) => <div className="lead-row" key={appointment.id}>
+          <strong>{appointment.appointmentDate}</strong><strong>{appointment.appointmentTime}</strong><strong>{appointment.appointmentNumber}</strong>
+          <span><strong>{appointment.patientNumber}</strong><br />{appointment.patientName}</span>
+          <span>{appointment.doctorName}</span><span>{appointment.treatment || "—"}</span><span>{statuses[appointment.status] || appointment.status}</span>
+          <span className="row-actions"><button className="text-button" type="button" onClick={() => openEdit(appointment)}>Edit</button></span>
+        </div>)}
+      </div>}
+      {upcomingTotalPages > 1 && <div className="form-actions">
+        <button className="secondary-button" type="button" disabled={upcomingPage <= 1} onClick={() => setUpcomingPage((page) => page - 1)}>Previous</button>
+        <span className="muted">Page {upcomingPage} of {upcomingTotalPages}</span>
+        <button className="secondary-button" type="button" disabled={upcomingPage >= upcomingTotalPages} onClick={() => setUpcomingPage((page) => page + 1)}>Next</button>
+      </div>}
     </div>
 
     <div className="card table-card lead-list">

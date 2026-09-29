@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type Patient = { id: string; patientNumber: string; name: string; mobile: string };
 type Doctor = { id: string; name: string };
@@ -21,7 +22,10 @@ function todayIndia() {
 }
 
 export default function AppointmentsPage() {
-  const [date, setDate] = useState(todayIndia);
+  const searchParams = useSearchParams();
+  const editAppointmentId = searchParams.get("edit");
+  const requestedDate = searchParams.get("date");
+  const [date, setDate] = useState(requestedDate || todayIndia);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [patientQuery, setPatientQuery] = useState("");
@@ -49,6 +53,12 @@ export default function AppointmentsPage() {
   }
 
   useEffect(() => { void load(); }, [date]);
+
+  useEffect(() => {
+    if (!editAppointmentId || !appointments.length) return;
+    const appointment = appointments.find((item) => item.id === editAppointmentId);
+    if (appointment) openEdit(appointment);
+  }, [editAppointmentId, appointments]);
 
   useEffect(() => {
     async function loadUpcomingCount() {

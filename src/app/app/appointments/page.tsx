@@ -221,11 +221,21 @@ export default function AppointmentsPage() {
         <label>Time<input name="appointmentTime" type="time" required defaultValue={editing?.appointmentTime ?? ""} /></label>
         <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? "Consultation"}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
         <label className="full">Treatment / purpose <span className="optional">optional · multiple selection</span>
-          <input type="text" value={treatmentQuery} onChange={(event) => setTreatmentQuery(event.target.value)} placeholder={selectedTreatments.length ? "Search another procedure..." : "Search and select procedures"} autoComplete="off" />
-          {selectedTreatments.length > 0 && <div className="selected-patient"><strong>Selected:</strong> {selectedTreatments.map((treatment) => <button type="button" className="text-button" key={treatment} onClick={() => toggleTreatment(treatment)}>{treatment} ×</button>)}</div>}
-          <div className="card search-results">
-            {treatmentOptions.filter((treatment) => treatment.toLowerCase().includes(treatmentQuery.trim().toLowerCase()) && !selectedTreatments.includes(treatment)).map((treatment) => <button type="button" className="search-result" key={treatment} onClick={() => { toggleTreatment(treatment); setTreatmentQuery(""); }}>{treatment}</button>)}
+          <div className="treatment-select">
+            <input type="text" value={treatmentQuery} onChange={(event) => setTreatmentQuery(event.target.value)} placeholder={selectedTreatments.length ? selectedTreatments.join(", ") : "Select procedures"} autoComplete="off" />
+            <div className="card search-results treatment-dropdown">
+              <input type="text" value={treatmentQuery} onChange={(event) => setTreatmentQuery(event.target.value)} placeholder="Search procedure..." autoComplete="off" />
+              <div className="treatment-options">
+                {treatmentOptions.filter((treatment) => treatment.toLowerCase().includes(treatmentQuery.trim().toLowerCase())).map((treatment) => (
+                  <label className="treatment-option" key={treatment}>
+                    <input type="checkbox" checked={selectedTreatments.includes(treatment)} onChange={() => toggleTreatment(treatment)} />
+                    <span>{treatment}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
+          <small className="muted">{selectedTreatments.length ? selectedTreatments.join(", ") : "No procedure selected"}</small>
           <input type="hidden" name="treatment" value={selectedTreatments.join(", ")} />
         </label>
         <label className="full">Notes <span className="optional">optional</span><textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Additional appointment notes..." /></label>

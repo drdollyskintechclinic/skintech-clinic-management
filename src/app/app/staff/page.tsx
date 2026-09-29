@@ -23,7 +23,7 @@ export default function StaffPage(){
   {open&&<div className="card form-card"><div className="form-header"><div><h2>{editing?"Edit staff member":"Add staff member"}</h2><p className="muted">Permissions come from the selected role.</p></div><button className="text-button" type="button" onClick={()=>setOpen(false)}>Close</button></div>
    <form className="lead-form" onSubmit={submit}>
     <label>Name<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} required placeholder="Full name"/></label>
-    <label>Role<select value={form.role} onChange={e=>setForm({...form,role:e.target.value})}><option value="DOCTOR">Doctor</option><option value="RECEPTIONIST_TELECALLER">Receptionist / Telecaller</option><option value="THERAPIST">Therapist</option><option value="ADMIN">Admin</option></select></label>
+    <label>Role<select value={form.role} onChange={e=>setForm({...form,role:e.target.value})}><option value="DOCTOR">Doctor</option><option value="RECEPTIONIST_TELECALLER">Receptionist / Telecaller</option><option value="THERAPIST">Therapist</option></select></label>
     <label>Contact number<input value={form.contactNumber} onChange={e=>setForm({...form,contactNumber:e.target.value})} placeholder="Mobile number"/></label>
     <label>Branch<select value={form.clinicLocationId} onChange={e=>setForm({...form,clinicLocationId:e.target.value})} required><option value="">Select branch</option>{locations.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
     <label>Job title<input value={form.jobTitle} onChange={e=>setForm({...form,jobTitle:e.target.value})} placeholder="Front Desk Executive, Laser Therapist..."/></label>

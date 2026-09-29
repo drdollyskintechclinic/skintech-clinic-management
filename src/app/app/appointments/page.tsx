@@ -15,6 +15,8 @@ const statuses: Record<string, string> = {
   SCHEDULED: "Scheduled", CONFIRMED: "Confirmed", CHECKED_IN: "Checked In",
   IN_CONSULTATION: "In Consultation", COMPLETED: "Completed", CANCELLED: "Cancelled", NO_SHOW: "No Show"
 };
+const appointmentTypes = ["Consultation", "Treatment", "Follow-up", "Procedure", "Other"];
+
 const treatmentOptions = [
   "Consultation",
   "Follow-up",

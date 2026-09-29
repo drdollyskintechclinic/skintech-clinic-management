@@ -220,16 +220,26 @@ export default function AppointmentsPage() {
         <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? "Consultation"}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
         <label>Treatment / purpose <span className="optional">optional · single selection</span>
           <div className="treatment-select">
-            <button type="button" className="treatment-trigger" onClick={() => setTreatmentOpen((open) => !open)}>
-              <span>{selectedTreatment || "Select procedure"}</span><span>▾</span>
-            </button>
+            <input
+              type="text"
+              value={treatmentOpen ? treatmentQuery : selectedTreatment}
+              onFocus={() => { setTreatmentOpen(true); setTreatmentQuery(""); }}
+              onChange={(event) => { setTreatmentQuery(event.target.value); setTreatmentOpen(true); }}
+              placeholder="Search procedure..."
+              autoComplete="off"
+            />
             {treatmentOpen && <div className="card search-results treatment-dropdown">
-              <input type="text" value={treatmentQuery} onChange={(event) => setTreatmentQuery(event.target.value)} placeholder="Search procedure..." autoComplete="off" autoFocus />
-              <div className="treatment-options">
-                {treatmentOptions.filter((treatment) => treatment.toLowerCase().includes(treatmentQuery.trim().toLowerCase())).map((treatment) => (
-                  <button type="button" className="search-result" key={treatment} onClick={() => { setSelectedTreatment(treatment); setTreatmentQuery(""); setTreatmentOpen(false); }}>{treatment}</button>
-                ))}
-              </div>
+              {treatmentOptions.filter((treatment) => treatment.toLowerCase().includes(treatmentQuery.trim().toLowerCase())).map((treatment) => (
+                <button
+                  type="button"
+                  className="search-result"
+                  key={treatment}
+                  onClick={() => { setSelectedTreatment(treatment); setTreatmentQuery(""); setTreatmentOpen(false); }}
+                >
+                  {treatment}
+                </button>
+              ))}
+              {treatmentOptions.filter((treatment) => treatment.toLowerCase().includes(treatmentQuery.trim().toLowerCase())).length === 0 && <span className="muted">No procedure found</span>}
             </div>}
           </div>
           <input type="hidden" name="treatment" value={selectedTreatment} />

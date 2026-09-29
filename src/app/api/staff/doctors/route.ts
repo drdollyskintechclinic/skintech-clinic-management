@@ -10,15 +10,28 @@ export const dynamic = "force-dynamic";
 const doctorSchema = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(320),
-  password: z.string().min(12).max(128)
+  password: z.string().min(12).max(128).optional(),
+  contactNumber: z.string().trim().max(30).optional(),
+  degree: z.string().trim().max(120).optional(),
+  speciality: z.string().trim().max(160).optional()
 });
+
+function clean(value?: string) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
 
 export async function GET() {
   const user = await requirePermission("staff.manage");
   const doctors = await db.userRole.findMany({
     where: { organizationId: user.organizationId, role: { name: "DOCTOR" } },
     include: {
-      user: { select: { id: true, name: true, email: true, isActive: true } },
+      user: {
+        select: {
+          id: true, name: true, email: true, isActive: true,
+          staffProfile: { select: { contactNumber: true, degree: true, speciality: true } }
+        }
+      },
       clinicLocation: { select: { id: true, name: true } }
     },
     orderBy: { user: { name: "asc" } }
@@ -35,14 +48,17 @@ export async function GET() {
       email: item.user.email,
       isActive: item.user.isActive,
       clinicLocationId: item.clinicLocationId,
-      clinicLocationName: item.clinicLocation?.name ?? "All branches"
+      clinicLocationName: item.clinicLocation?.name ?? "All branches",
+      contactNumber: item.user.staffProfile?.contactNumber ?? "",
+      degree: item.user.staffProfile?.degree ?? "",
+      speciality: item.user.staffProfile?.speciality ?? ""
     }))
   });
 }
 
 export async function POST(request: Request) {
   const user = await requirePermission("staff.manage");
-  const parsed = doctorSchema.safeParse(await request.json());
+  const parsed = doctorSchema.extend({ password: z.string().min(12).max(128) }).safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "Please enter a valid doctor name, email and password (minimum 12 characters)." }, { status: 400 });
 
   const email = parsed.data.email.toLowerCase();
@@ -65,6 +81,9 @@ export async function POST(request: Request) {
           clinicLocationId: user.clinicLocationId,
           scopeKey: user.clinicLocationId ?? user.organizationId,
           jobTitle: "Doctor",
+          contactNumber: clean(parsed.data.contactNumber),
+          degree: clean(parsed.data.degree),
+          speciality: clean(parsed.data.speciality),
           isActive: true
         }
       },
@@ -87,12 +106,36 @@ export async function PATCH(request: Request) {
   const doctorId = z.string().uuid().safeParse(body.doctorId);
   if (!doctorId.success) return NextResponse.json({ error: "Invalid doctor." }, { status: 400 });
 
-  const assignment = await db.userRole.findFirst({ where: { userId: doctorId.data, organizationId: user.organizationId, role: { name: "DOCTOR" } } });
+  const assignment = await db.userRole.findFirst({
+    where: { userId: doctorId.data, organizationId: user.organizationId, role: { name: "DOCTOR" } }
+  });
   if (!assignment) return NextResponse.json({ error: "Doctor not found." }, { status: 404 });
 
-  const isActive = z.boolean().safeParse(body.isActive);
-  if (!isActive.success) return NextResponse.json({ error: "Invalid active status." }, { status: 400 });
+  const parsed = doctorSchema.partial().extend({ isActive: z.boolean().optional() }).safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Invalid doctor details." }, { status: 400 });
 
-  await db.user.update({ where: { id: doctorId.data }, data: { isActive: isActive.data } });
+  const data: { name?: string; email?: string; isActive?: boolean; passwordHash?: string } = {};
+  if (parsed.data.name) data.name = parsed.data.name;
+  if (parsed.data.email) data.email = parsed.data.email.toLowerCase();
+  if (typeof parsed.data.isActive === "boolean") data.isActive = parsed.data.isActive;
+  if (parsed.data.password) data.passwordHash = await hash(parsed.data.password);
+
+  if (data.email) {
+    const existing = await db.user.findFirst({ where: { email: data.email, id: { not: doctorId.data } } });
+    if (existing) return NextResponse.json({ error: "Another staff account already uses this email." }, { status: 409 });
+  }
+
+  await db.$transaction([
+    db.user.update({ where: { id: doctorId.data }, data }),
+    db.staffProfile.update({
+      where: { userId: doctorId.data },
+      data: {
+        contactNumber: clean(parsed.data.contactNumber),
+        degree: clean(parsed.data.degree),
+        speciality: clean(parsed.data.speciality)
+      }
+    })
+  ]);
+
   return NextResponse.json({ ok: true });
 }

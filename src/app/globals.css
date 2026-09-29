@@ -63,7 +63,7 @@ h2 { margin-top: 0; }
 .lead-list { display: block; overflow-x: auto; overflow-y: hidden; width: 100%; max-width: 100%; min-width: 0; }
 /* Desktop: keep Name + Mobile fixed and make all remaining enquiry fields visible without horizontal scrolling. */
 .lead-table { min-width: 0; width: 100%; }
-.lead-row { display: grid; grid-template-columns: 130px 105px minmax(70px, .8fr) minmax(105px, 1.2fr) minmax(125px, 1.35fr) minmax(95px, 1fr) minmax(90px, .9fr) minmax(115px, 1.1fr) minmax(82px, .8fr); gap: .35rem; padding: .85rem .25rem; border-bottom: 1px solid var(--line); align-items: center; font-size: .78rem; }
+.lead-row { display: grid; grid-template-columns: 120px 95px 85px 105px 60px 100px 180px 75px 65px 100px; gap: .35rem; padding: .85rem .25rem; border-bottom: 1px solid var(--line); align-items: center; font-size: .78rem; }
 .lead-row:last-child { border-bottom: 0; }
 .lead-row > :first-child { min-width: 0; overflow-wrap: anywhere; white-space: normal; }
 .lead-row > :nth-child(1), .lead-row > :nth-child(2) { position: sticky; z-index: 2; background: var(--surface); }

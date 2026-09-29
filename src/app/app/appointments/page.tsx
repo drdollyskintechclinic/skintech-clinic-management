@@ -30,6 +30,7 @@ export default function AppointmentsPage() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [editing, setEditing] = useState<Appointment | null>(null);
 
   async function load() {
     const response = await fetch(`/api/appointments?date=${encodeURIComponent(date)}`, { cache: "no-store" });
@@ -56,11 +57,22 @@ export default function AppointmentsPage() {
   }), [appointments]);
 
   function openNew() {
+    setEditing(null);
     setOpen(true);
     setError("");
     setPatientQuery("");
     setPatientResults([]);
     setSelectedPatient(null);
+  }
+
+  function openEdit(appointment: Appointment) {
+    setEditing(appointment);
+    setOpen(true); setError(""); setPatientQuery(""); setPatientResults([]);
+    setSelectedPatient({ id: appointment.patientId, patientNumber: appointment.patientNumber, name: appointment.patientName, mobile: appointment.mobile });
+  }
+
+  function closeForm() {
+    setOpen(false); setEditing(null); setError(""); setPatientQuery(""); setPatientResults([]); setSelectedPatient(null);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -80,9 +92,9 @@ export default function AppointmentsPage() {
     const data = Object.fromEntries(form.entries());
 
     const response = await fetch("/api/appointments", {
-      method: "POST",
+      method: editing ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, patientId: selectedPatient.id })
+      body: JSON.stringify(editing ? { ...data, patientId: selectedPatient.id, appointmentId: editing.id } : { ...data, patientId: selectedPatient.id })
     });
     const result = await response.json();
     setSaving(false);
@@ -93,11 +105,24 @@ export default function AppointmentsPage() {
     }
 
     formElement.reset();
-    setOpen(false);
+    closeForm();
     setPatientQuery("");
     setPatientResults([]);
     setSelectedPatient(null);
     await load();
+  }
+
+  async function changeStatus(appointment: Appointment, status: string) {
+    setError("");
+    const response = await fetch("/api/appointments", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ appointmentId: appointment.id, action: "status", status }) });
+    const result = await response.json();
+    if (!response.ok) { setError(result.error ?? "Unable to update appointment status."); return; }
+    await load();
+  }
+
+  function statusActions(status: string) {
+    const map: Record<string,string[]> = { SCHEDULED:["CONFIRMED","CANCELLED","NO_SHOW"], CONFIRMED:["CHECKED_IN","CANCELLED","NO_SHOW"], CHECKED_IN:["IN_CONSULTATION","CANCELLED","NO_SHOW"], IN_CONSULTATION:["COMPLETED"], COMPLETED:[], CANCELLED:[], NO_SHOW:[] };
+    return map[status] ?? [];
   }
 
   return <>
@@ -111,7 +136,7 @@ export default function AppointmentsPage() {
     {error && <p className="error">{error}</p>}
 
     {open && <div className="card form-card">
-      <div className="form-header"><div><h2>New appointment</h2><p className="muted">Search the existing patient and select a database-managed doctor.</p></div><button className="text-button" type="button" onClick={() => setOpen(false)}>Close</button></div>
+      <div className="form-header"><div><h2>{editing ? "Edit appointment" : "New appointment"}</h2><p className="muted">{editing ? `Appointment ${editing.appointmentNumber}` : "Search the existing patient and select a database-managed doctor."}</p></div><button className="text-button" type="button" onClick={() => setOpen(false)}>Close</button></div>
       <form className="lead-form" onSubmit={submit}>
         <label className="full">Patient
           {selectedPatient ? <div className="card selected-patient"><strong>{selectedPatient.patientNumber} · {selectedPatient.name}</strong><span>{selectedPatient.mobile}</span><button className="text-button" type="button" onClick={() => { setSelectedPatient(null); setPatientQuery(""); }}>Change</button></div> : <>
@@ -120,12 +145,12 @@ export default function AppointmentsPage() {
           </>}
         </label>
         <label>Doctor<select name="doctorUserId" required defaultValue=""><option value="" disabled>Select doctor</option>{doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}</select></label>
-        <label>Date<input name="appointmentDate" type="date" required defaultValue={date} /></label>
-        <label>Time<input name="appointmentTime" type="time" required /></label>
-        <label>Appointment type<select name="appointmentType" required defaultValue="Consultation">{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
-        <label>Treatment / purpose <span className="optional">optional</span><input name="treatment" placeholder="e.g. Hair PRP, Hydrafacial, Consultation" /></label>
-        <label className="full">Notes <span className="optional">optional</span><textarea name="notes" rows={3} placeholder="Additional appointment notes..." /></label>
-        <div className="form-actions full"><button className="button" disabled={saving}>{saving ? "Saving..." : "Create appointment"}</button><button className="secondary-button" type="button" onClick={() => setOpen(false)}>Cancel</button></div>
+        <label>Date<input name="appointmentDate" type="date" required defaultValue={editing?.appointmentDate ?? date} /></label>
+        <label>Time<input name="appointmentTime" type="time" required defaultValue={editing?.appointmentTime ?? ""} /></label>
+        <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? "Consultation"}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
+        <label>Treatment / purpose <span className="optional">optional</span><input name="treatment" defaultValue={editing?.treatment ?? ""} placeholder="e.g. Hair PRP, Hydrafacial, Consultation" /></label>
+        <label className="full">Notes <span className="optional">optional</span><textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Additional appointment notes..." /></label>
+        <div className="form-actions full"><button className="button" disabled={saving}>{saving ? "Saving..." : editing ? "Save changes" : "Create appointment"}</button><button className="secondary-button" type="button" onClick={closeForm}>Cancel</button></div>
       </form>
     </div>}
 
@@ -139,7 +164,7 @@ export default function AppointmentsPage() {
       {appointments.length === 0 ? <div className="empty-state"><strong>No appointments for this date</strong><span>Create an appointment to build the clinic schedule.</span></div> : <div className="lead-table appointment-table">
         <div className="lead-row lead-head"><span>Appointment</span><span>Time</span><span>Patient</span><span>Mobile</span><span>Doctor</span><span>Type</span><span>Treatment</span><span>Status</span></div>
         {appointments.slice().sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime)).map((appointment) => <div className="lead-row" key={appointment.id}>
-          <strong>{appointment.appointmentNumber}</strong><strong>{appointment.appointmentTime}</strong><span><strong>{appointment.patientNumber}</strong><br />{appointment.patientName}</span><span>{appointment.mobile}</span><span>{appointment.doctorName}</span><span>{appointment.appointmentType}</span><span>{appointment.treatment || "—"}</span><span>{statuses[appointment.status] || appointment.status}</span>
+          <strong>{appointment.appointmentNumber}</strong><strong>{appointment.appointmentTime}</strong><span><strong>{appointment.patientNumber}</strong><br />{appointment.patientName}</span><span>{appointment.mobile}</span><span>{appointment.doctorName}</span><span>{appointment.appointmentType}</span><span>{appointment.treatment || "—"}</span><span>{statuses[appointment.status] || appointment.status}</span><span className="row-actions"><button className="text-button" type="button" onClick={() => openEdit(appointment)}>Edit</button>{statusActions(appointment.status).map((nextStatus) => <button key={nextStatus} className={nextStatus === "CANCELLED" || nextStatus === "NO_SHOW" ? "danger-button" : "text-button"} type="button" onClick={() => void changeStatus(appointment, nextStatus)}>{statuses[nextStatus]}</button>)}</span>
         </div>)}
       </div>}
     </div>

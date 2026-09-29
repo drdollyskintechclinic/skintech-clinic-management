@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 type Patient = { id: string; patientNumber: string; name: string; mobile: string };
 type Doctor = { id: string; name: string };
@@ -258,7 +259,7 @@ export default function AppointmentsPage() {
       {appointments.length === 0 ? <div className="empty-state"><strong>No appointments for this date</strong><span>Create an appointment to build the clinic schedule.</span></div> : <div className="lead-table appointment-table">
         <div className="lead-row lead-head"><span>Appointment</span><span>Time</span><span>Patient</span><span>Mobile</span><span>Doctor</span><span>Type</span><span>Treatment</span><span>Status</span></div>
         {appointments.slice().sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime)).map((appointment) => <div className="lead-row" key={appointment.id}>
-          <strong>{appointment.appointmentNumber}</strong><strong>{appointment.appointmentTime}</strong><span><strong>{appointment.patientNumber}</strong><br />{appointment.patientName}</span><span>{appointment.mobile}</span><span>{appointment.doctorName}</span><span>{appointment.appointmentType}</span><span>{appointment.treatment || "—"}</span><span>{statuses[appointment.status] || appointment.status}</span><span className="row-actions"><button className="text-button" type="button" onClick={() => openEdit(appointment)}>Edit</button>{appointment.status === "SCHEDULED" && <button className="danger-button" type="button" onClick={() => void deleteAppointment(appointment)}>Delete</button>}</span>
+          <strong>{appointment.appointmentNumber}</strong><strong>{appointment.appointmentTime}</strong><span><strong>{appointment.patientNumber}</strong><br />{appointment.patientName}</span><span>{appointment.mobile}</span><span>{appointment.doctorName}</span><span>{appointment.appointmentType}</span><span>{appointment.treatment || "—"}</span><span>{statuses[appointment.status] || appointment.status}</span><span className="row-actions"><button className="text-button" type="button" onClick={() => openEdit(appointment)}>Edit</button>{!["CANCELLED", "NO_SHOW"].includes(appointment.status) && <Link className="text-button" href={`/app/appointments/${appointment.id}/consultation`}>Consultation</Link>}{appointment.status === "SCHEDULED" && <button className="danger-button" type="button" onClick={() => void deleteAppointment(appointment)}>Delete</button>}</span>
         </div>)}
       </div>}
     </div>

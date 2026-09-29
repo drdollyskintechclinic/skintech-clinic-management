@@ -56,15 +56,29 @@ export default function AppointmentsPage() {
   }), [appointments]);
 
   function openNew() {
-    setOpen(true); setError(""); setPatientQuery(""); setPatientResults([]); setSelectedPatient(null);
+    setOpen(true);
+    setError("");
+    setPatientQuery("");
+    setPatientResults([]);
+    setSelectedPatient(null);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedPatient) { setError("Please search for and select a patient."); return; }
-    setSaving(true); setError("");
-    const form = new FormData(event.currentTarget);
+    if (!selectedPatient) {
+      setError("Please search for and select a patient.");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+
+    // Keep a stable reference before awaiting the API request.
+    // React may clear the event's currentTarget after the await.
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const data = Object.fromEntries(form.entries());
+
     const response = await fetch("/api/appointments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -72,10 +86,17 @@ export default function AppointmentsPage() {
     });
     const result = await response.json();
     setSaving(false);
-    if (!response.ok) { setError(result.error ?? "Unable to create appointment."); return; }
+
+    if (!response.ok) {
+      setError(result.error ?? "Unable to create appointment.");
+      return;
+    }
+
+    formElement.reset();
     setOpen(false);
-    setPatientQuery(""); setPatientResults([]); setSelectedPatient(null);
-    event.currentTarget.reset();
+    setPatientQuery("");
+    setPatientResults([]);
+    setSelectedPatient(null);
     await load();
   }
 

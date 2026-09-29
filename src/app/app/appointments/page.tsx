@@ -15,7 +15,48 @@ const statuses: Record<string, string> = {
   SCHEDULED: "Scheduled", CONFIRMED: "Confirmed", CHECKED_IN: "Checked In",
   IN_CONSULTATION: "In Consultation", COMPLETED: "Completed", CANCELLED: "Cancelled", NO_SHOW: "No Show"
 };
-const appointmentTypes = ["Consultation", "Treatment", "Follow-up", "Procedure", "Other"];
+const treatmentOptions = [
+  "Consultation",
+  "Follow-up",
+  "Hydrafacial",
+  "Advanced Hydrafacial",
+  "Glow MediFacial",
+  "MediFacial",
+  "Carbon Laser Facial",
+  "CO2 Fractional Laser",
+  "Q-Switched Nd:YAG Laser",
+  "Pico Laser",
+  "Laser Hair Reduction",
+  "Electrolysis",
+  "Tattoo Removal",
+  "Hair PRP",
+  "Hair GFC",
+  "Hair Patch Restoration",
+  "MNRF",
+  "HIFU",
+  "IV Glutathione Therapy",
+  "Botox",
+  "Dermal Fillers",
+  "Thread Lift",
+  "Eyebrow Microblading",
+  "Ombre Brows",
+  "Powder Brows",
+  "Lip Blush",
+  "Scalp Micropigmentation",
+  "Earlobe Repair",
+  "Gunshot Ear Piercing",
+  "Skin Tag Removal",
+  "Wart Removal",
+  "Mole Removal",
+  "Chemical Peel",
+  "Dermaplaning",
+  "Microdermabrasion",
+  "Photofacial",
+  "Skin Brightening",
+  "BB Glow Facial",
+  "CC Glow Facial",
+  "Other"
+];
 
 function todayIndia() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -166,7 +207,7 @@ export default function AppointmentsPage() {
         <label>Date<input name="appointmentDate" type="date" required defaultValue={editing?.appointmentDate ?? date} /></label>
         <label>Time<input name="appointmentTime" type="time" required defaultValue={editing?.appointmentTime ?? ""} /></label>
         <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? "Consultation"}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
-        <label>Treatment / purpose <span className="optional">optional</span><input name="treatment" defaultValue={editing?.treatment ?? ""} placeholder="e.g. Hair PRP, Hydrafacial, Consultation" /></label>
+        <label>Treatment / purpose <span className="optional">optional</span><select name="treatment" defaultValue={editing?.treatment ?? ""}><option value="">Select procedure</option>{treatmentOptions.map((treatment) => <option key={treatment} value={treatment}>{treatment}</option>)}</select></label>
         <label className="full">Notes <span className="optional">optional</span><textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Additional appointment notes..." /></label>
         {editing && <label>Status<select name="status" defaultValue={editing.status}>{Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
         <div className="form-actions full"><button className="button" disabled={saving}>{saving ? "Saving..." : editing ? "Save changes" : "Create appointment"}</button><button className="secondary-button" type="button" onClick={closeForm}>Cancel</button></div>

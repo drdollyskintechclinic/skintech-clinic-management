@@ -5,7 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 type Patient = { id: string; patientNumber: string; name: string; mobile: string };
 type Doctor = { id: string; name: string };
 type Appointment = {
-  id: string; appointmentNumber: string; patientNumber: string; patientName: string; mobile: string;
+  id: string; appointmentNumber: string; patientId: string; patientNumber: string; patientName: string; mobile: string;
   doctorUserId: string; doctorName: string; appointmentDate: string; appointmentTime: string;
   appointmentType: string; treatment?: string; notes?: string; status: string;
 };
@@ -136,7 +136,7 @@ export default function AppointmentsPage() {
     {error && <p className="error">{error}</p>}
 
     {open && <div className="card form-card">
-      <div className="form-header"><div><h2>{editing ? "Edit appointment" : "New appointment"}</h2><p className="muted">{editing ? `Appointment ${editing.appointmentNumber}` : "Search the existing patient and select a database-managed doctor."}</p></div><button className="text-button" type="button" onClick={() => setOpen(false)}>Close</button></div>
+      <div className="form-header"><div><h2>{editing ? "Edit appointment" : "New appointment"}</h2><p className="muted">{editing ? `Appointment ${editing.appointmentNumber}` : "Search the existing patient and select a database-managed doctor."}</p></div><button className="text-button" type="button" onClick={closeForm}>Close</button></div>
       <form className="lead-form" onSubmit={submit}>
         <label className="full">Patient
           {selectedPatient ? <div className="card selected-patient"><strong>{selectedPatient.patientNumber} · {selectedPatient.name}</strong><span>{selectedPatient.mobile}</span><button className="text-button" type="button" onClick={() => { setSelectedPatient(null); setPatientQuery(""); }}>Change</button></div> : <>
@@ -144,7 +144,7 @@ export default function AppointmentsPage() {
             {patientQuery.trim().length >= 2 && <div className="card search-results">{patientResults.length ? patientResults.map((patient) => <button type="button" className="search-result" key={patient.id} onClick={() => { setSelectedPatient(patient); setPatientResults([]); }}>{patient.patientNumber} · {patient.name}<small>{patient.mobile}</small></button>) : <span className="muted">No matching patients found.</span>}</div>}
           </>}
         </label>
-        <label>Doctor<select name="doctorUserId" required defaultValue=""><option value="" disabled>Select doctor</option>{doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}</select></label>
+        <label>Doctor<select name="doctorUserId" required defaultValue={editing?.doctorUserId ?? ""}><option value="" disabled>Select doctor</option>{doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}</select></label>
         <label>Date<input name="appointmentDate" type="date" required defaultValue={editing?.appointmentDate ?? date} /></label>
         <label>Time<input name="appointmentTime" type="time" required defaultValue={editing?.appointmentTime ?? ""} /></label>
         <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? "Consultation"}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>

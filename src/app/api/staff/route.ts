@@ -58,7 +58,7 @@ export async function GET() {
   ]);
 
   const seen = new Set<string>();
-  const result = staff.filter((item) => {
+  const result = staff.filter((item) => item.role.name !== "ADMIN").filter((item) => {
     if (seen.has(item.user.id)) return false;
     seen.add(item.user.id);
     return true;

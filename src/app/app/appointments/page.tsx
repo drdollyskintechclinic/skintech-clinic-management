@@ -17,8 +17,8 @@ const statuses: Record<string, string> = {
 };
 const appointmentTypes = ["Consultation", "Treatment", "Follow-up", "Procedure", "Other"];
 
-const timeSlots = Array.from({ length: 48 }, (_, index) => {
-  const minutes = index * 15;
+const timeSlots = Array.from({ length: 53 }, (_, index) => {
+  const minutes = 9 * 60 + index * 15;
   const hour = Math.floor(minutes / 60);
   const minute = minutes % 60;
   return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;

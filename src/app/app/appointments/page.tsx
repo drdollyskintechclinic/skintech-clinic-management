@@ -14,7 +14,6 @@ const statuses: Record<string, string> = {
   SCHEDULED: "Scheduled", CONFIRMED: "Confirmed", CHECKED_IN: "Checked In",
   IN_CONSULTATION: "In Consultation", COMPLETED: "Completed", CANCELLED: "Cancelled", NO_SHOW: "No Show"
 };
-
 const appointmentTypes = ["Consultation", "Treatment", "Follow-up", "Procedure", "Other"];
 
 function todayIndia() {
@@ -25,22 +24,28 @@ export default function AppointmentsPage() {
   const [date, setDate] = useState(todayIndia);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [patients, setPatients] = useState<Patient[]>([]);
+  const [patientQuery, setPatientQuery] = useState("");
+  const [patientResults, setPatientResults] = useState<Patient[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   async function load() {
-    const [appointmentResponse, patientResponse] = await Promise.all([
-      fetch(`/api/appointments?date=${encodeURIComponent(date)}`, { cache: "no-store" }),
-      fetch("/api/patients?page=1&pageSize=50", { cache: "no-store" })
-    ]);
-    if (appointmentResponse.ok) {
-      const data = await appointmentResponse.json();
+    const response = await fetch(`/api/appointments?date=${encodeURIComponent(date)}`, { cache: "no-store" });
+    if (response.ok) {
+      const data = await response.json();
       setAppointments(data.appointments);
       setDoctors(data.doctors);
     }
-    if (patientResponse.ok) setPatients((await patientResponse.json()).patients);
+  }
+
+  async function searchPatients(query: string) {
+    setPatientQuery(query);
+    setSelectedPatient(null);
+    if (query.trim().length < 2) { setPatientResults([]); return; }
+    const response = await fetch(`/api/patients?q=${encodeURIComponent(query.trim())}&page=1&pageSize=10`, { cache: "no-store" });
+    if (response.ok) setPatientResults((await response.json()).patients);
   }
 
   useEffect(() => { void load(); }, [date]);
@@ -50,19 +55,26 @@ export default function AppointmentsPage() {
     waiting: appointments.filter((item) => item.status === "CHECKED_IN").length
   }), [appointments]);
 
+  function openNew() {
+    setOpen(true); setError(""); setPatientQuery(""); setPatientResults([]); setSelectedPatient(null);
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!selectedPatient) { setError("Please search for and select a patient."); return; }
     setSaving(true); setError("");
     const form = new FormData(event.currentTarget);
+    const data = Object.fromEntries(form.entries());
     const response = await fetch("/api/appointments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(Object.fromEntries(form.entries()))
+      body: JSON.stringify({ ...data, patientId: selectedPatient.id })
     });
     const result = await response.json();
     setSaving(false);
     if (!response.ok) { setError(result.error ?? "Unable to create appointment."); return; }
     setOpen(false);
+    setPatientQuery(""); setPatientResults([]); setSelectedPatient(null);
     event.currentTarget.reset();
     await load();
   }
@@ -71,19 +83,21 @@ export default function AppointmentsPage() {
     <p className="eyebrow">Clinic schedule</p>
     <div className="page-header">
       <div><h1>Appointments</h1><p className="lead">Schedule visits, manage today's queue and track appointment status.</p></div>
-      <button className="button" onClick={() => { setOpen(true); setError(""); }}>+ New appointment</button>
+      <button className="button" onClick={openNew}>+ New appointment</button>
     </div>
 
-    <div className="toolbar">
-      <label>Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
-    </div>
-
+    <div className="toolbar"><label>Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label></div>
     {error && <p className="error">{error}</p>}
 
     {open && <div className="card form-card">
-      <div className="form-header"><div><h2>New appointment</h2><p className="muted">Link the visit to an existing patient and doctor.</p></div><button className="text-button" type="button" onClick={() => setOpen(false)}>Close</button></div>
+      <div className="form-header"><div><h2>New appointment</h2><p className="muted">Search the existing patient and select a database-managed doctor.</p></div><button className="text-button" type="button" onClick={() => setOpen(false)}>Close</button></div>
       <form className="lead-form" onSubmit={submit}>
-        <label>Patient<select name="patientId" required defaultValue=""><option value="" disabled>Select patient</option>{patients.map((patient) => <option key={patient.id} value={patient.id}>{patient.patientNumber} · {patient.name} · {patient.mobile}</option>)}</select></label>
+        <label className="full">Patient
+          {selectedPatient ? <div className="card selected-patient"><strong>{selectedPatient.patientNumber} · {selectedPatient.name}</strong><span>{selectedPatient.mobile}</span><button className="text-button" type="button" onClick={() => { setSelectedPatient(null); setPatientQuery(""); }}>Change</button></div> : <>
+            <input value={patientQuery} onChange={(event) => void searchPatients(event.target.value)} placeholder="Search name, mobile or Patient ID" autoComplete="off" />
+            {patientQuery.trim().length >= 2 && <div className="card search-results">{patientResults.length ? patientResults.map((patient) => <button type="button" className="search-result" key={patient.id} onClick={() => { setSelectedPatient(patient); setPatientResults([]); }}>{patient.patientNumber} · {patient.name}<small>{patient.mobile}</small></button>) : <span className="muted">No matching patients found.</span>}</div>}
+          </>}
+        </label>
         <label>Doctor<select name="doctorUserId" required defaultValue=""><option value="" disabled>Select doctor</option>{doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}</select></label>
         <label>Date<input name="appointmentDate" type="date" required defaultValue={date} /></label>
         <label>Time<input name="appointmentTime" type="time" required /></label>
@@ -102,9 +116,9 @@ export default function AppointmentsPage() {
 
     <div className="card table-card lead-list">
       {appointments.length === 0 ? <div className="empty-state"><strong>No appointments for this date</strong><span>Create an appointment to build the clinic schedule.</span></div> : <div className="lead-table appointment-table">
-        <div className="lead-row lead-head"><span>Time</span><span>Patient</span><span>Mobile</span><span>Doctor</span><span>Type</span><span>Treatment</span><span>Status</span></div>
-        {appointments.sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime)).map((appointment) => <div className="lead-row" key={appointment.id}>
-          <strong>{appointment.appointmentTime}</strong><span><strong>{appointment.patientNumber}</strong><br />{appointment.patientName}</span><span>{appointment.mobile}</span><span>{appointment.doctorName}</span><span>{appointment.appointmentType}</span><span>{appointment.treatment || "—"}</span><span>{statuses[appointment.status] || appointment.status}</span>
+        <div className="lead-row lead-head"><span>Appointment</span><span>Time</span><span>Patient</span><span>Mobile</span><span>Doctor</span><span>Type</span><span>Treatment</span><span>Status</span></div>
+        {appointments.slice().sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime)).map((appointment) => <div className="lead-row" key={appointment.id}>
+          <strong>{appointment.appointmentNumber}</strong><strong>{appointment.appointmentTime}</strong><span><strong>{appointment.patientNumber}</strong><br />{appointment.patientName}</span><span>{appointment.mobile}</span><span>{appointment.doctorName}</span><span>{appointment.appointmentType}</span><span>{appointment.treatment || "—"}</span><span>{statuses[appointment.status] || appointment.status}</span>
         </div>)}
       </div>}
     </div>

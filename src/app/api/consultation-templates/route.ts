@@ -87,7 +87,22 @@ async function listTemplates(organizationId: string, actorUserId: string) {
       return data.map((event) => event.metadata as Record<string, unknown>);
     });
 
-    if (seeded) return seeded;
+    if (seeded) {
+      const refreshedEvents = await db.auditEvent.findMany({
+        where: { organizationId, resourceType: "CONSULTATION_TEMPLATE" },
+        orderBy: { occurredAt: "desc" },
+        take: 2000
+      });
+      const refreshedLatest = new Map<string, any>();
+      for (const event of refreshedEvents) {
+        if (!event.resourceId || refreshedLatest.has(event.resourceId)) continue;
+        refreshedLatest.set(event.resourceId, event);
+      }
+      return [...refreshedLatest.values()]
+        .filter((event) => event.action !== "CONSULTATION_TEMPLATE_DELETED")
+        .map((event) => ({ id: event.resourceId, ...(event.metadata as Record<string, unknown>) }))
+        .sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0) || String(a.name).localeCompare(String(b.name)));
+    }
   }
   const latest = new Map<string, any>();
   for (const event of events) {

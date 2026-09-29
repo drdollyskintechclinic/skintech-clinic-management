@@ -35,7 +35,7 @@ async function listTemplates(organizationId: string) {
   }
   return [...latest.values()]
     .filter((event) => event.action !== "CONSULTATION_TEMPLATE_DELETED")
-    .map((event) => event.metadata as Record<string, unknown>)
+    .map((event) => ({ id: event.resourceId, ...(event.metadata as Record<string, unknown>) }))
     .sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0) || String(a.name).localeCompare(String(b.name)));
 }
 

@@ -8,6 +8,7 @@ const navigation = [
   { href: "/app/patients", label: "Patients" },
   { href: "/app/appointments", label: "Appointments" },
   { href: "/app/staff", label: "Doctors & Staff" },
+  { href: "/app/consultation-templates", label: "Consultation Templates" },
 ];
 
 export default async function ApplicationLayout({ children }: Readonly<{ children: React.ReactNode }>) {

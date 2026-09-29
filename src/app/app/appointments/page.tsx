@@ -142,7 +142,11 @@ export default function AppointmentsPage() {
   }
 
   function closeForm() {
-    setOpen(false); setEditing(null); setError(""); setPatientQuery(""); setPatientResults([]); setSelectedPatient(null);
+    setOpen(false); setEditing(null); setError(""); setPatientQuery(""); setPatientResults([]); setSelectedPatient(null); setTreatmentQuery(""); setSelectedTreatments([]);
+  }
+
+  function toggleTreatment(treatment: string) {
+    setSelectedTreatments((current) => current.includes(treatment) ? current.filter((item) => item !== treatment) : [...current, treatment]);
   }
 
   async function deleteAppointment(appointment: Appointment) {

@@ -18,7 +18,7 @@ export default function StaffPage(){
  const doctor=form.role==="DOCTOR";
  return <>
   <p className="eyebrow">Staff management</p>
-  <div className="page-header"><div><h1>Staff Management</h1><p className="lead">Manage doctors, receptionists, telecallers, therapists and administrators.</p></div><button className="button" onClick={openAdd}>+ Add staff</button></div>
+  <div className="page-header"><div><h1>Staff Management</h1><p className="lead">Manage doctors, receptionists, telecallers and therapists.</p></div><button className="button" onClick={openAdd}>+ Add staff</button></div>
   {error&&<p className="error">{error}</p>}
   {open&&<div className="card form-card"><div className="form-header"><div><h2>{editing?"Edit staff member":"Add staff member"}</h2><p className="muted">Permissions come from the selected role.</p></div><button className="text-button" type="button" onClick={()=>setOpen(false)}>Close</button></div>
    <form className="lead-form" onSubmit={submit}>
@@ -37,6 +37,5 @@ export default function StaffPage(){
    {staff.map(m=><div className="lead-row" key={m.id}><strong>{m.name||"Unnamed staff"}</strong><span>{m.roleLabel}</span><span>{m.contactNumber||"—"}</span><span>{m.jobTitle||"—"}</span><span>{m.role==="DOCTOR"?(m.degree||"—"):"—"}</span><span>{m.role==="DOCTOR"?(m.speciality||"—"):"—"}</span><span>{m.email}</span><span>{m.clinicLocationName}</span><span>{m.isActive?"Active":"Inactive"}</span><span className="row-actions"><button className="text-button" type="button" onClick={()=>openEdit(m)}>Edit</button><button className={m.isActive?"danger-button":"text-button"} type="button" onClick={()=>void toggle(m)}>{m.isActive?"Deactivate":"Activate"}</button></span></div>)}
    {staff.length===0&&<div className="empty-state"><strong>No staff added</strong><span>Add a staff member to manage clinic access.</span></div>}
   </div></div>
-  <div className="card" style={{marginTop:"1rem"}}><h2>Staff roles</h2><p className="muted">Doctor, Receptionist / Telecaller, Therapist and Admin use the existing role permissions. Change a staff member's role here instead of manually assigning individual permissions.</p></div>
  </>;
 }

@@ -82,7 +82,7 @@ async function findPatient(organizationId: string, patientId: string) {
 
 async function nextPatientNumber(organizationId: string) {
   const today = indiaToday();
-  const prefix = `DDSC${today.year}${String(today.month).padStart(2, "0")}`;
+  const prefix = `SC${String(today.year).slice(-2)}${String(today.month).padStart(2, "0")}`;
   const events = await db.auditEvent.findMany({ where: { organizationId, resourceType: "PATIENT", action: "PATIENT_CREATED" }, select: { metadata: true }, take: 5000 });
   let max = 0;
   for (const event of events) {

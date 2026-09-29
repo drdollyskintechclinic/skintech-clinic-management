@@ -128,13 +128,13 @@ export async function POST(request: Request) {
   if (conflict) return NextResponse.json({ error: "This doctor already has an appointment at that time.", conflict }, { status: 409 });
 
   const appointmentId = crypto.randomUUID();
-  const datePrefix = parsed.data.appointmentDate.replaceAll("-", "");
+  const datePrefix = parsed.data.appointmentDate.replaceAll("-", "").slice(2);
   const existingNumbers = sameDay
     .map((appointment) => appointment.appointmentNumber)
-    .filter((number) => number.startsWith(`APT${datePrefix}`))
-    .map((number) => Number(number.slice((`APT${datePrefix}`).length)) || 0);
+    .filter((number) => number.startsWith(datePrefix))
+    .map((number) => Number(number.slice(datePrefix.length)) || 0);
   const sequence = Math.max(0, ...existingNumbers) + 1;
-  const appointmentNumber = `APT${datePrefix}${String(sequence).padStart(3, "0")}`;
+  const appointmentNumber = `${datePrefix}${String(sequence).padStart(3, "0")}`;
 
   const metadata = {
     ...parsed.data,

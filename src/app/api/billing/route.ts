@@ -103,9 +103,9 @@ async function catalog(org: string) {
   return { treatments, packages };
 }
 
-function serializeBill(e: Event) {
+function serializeBill(e: Event, actor?: { name: string | null; email: string } | null) {
   const d = data(e);
-  return { id: e.resourceId ?? e.id, ...d, createdAt: e.occurredAt.toISOString(), actorUserId: e.actorUserId };
+  return { id: e.resourceId ?? e.id, ...d, createdAt: e.occurredAt.toISOString(), actorUserId: e.actorUserId, actorUserName: actor?.name ?? null, actorUserEmail: actor?.email ?? null };
 }
 
 export async function GET(request: Request) {
@@ -113,7 +113,10 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const q = params.get("q")?.trim().toLowerCase() ?? "";
   const [catalogue, billEvents] = await Promise.all([catalog(user.organizationId), events(user.organizationId, "BILL")]);
-  const bills = current(billEvents).map(serializeBill).filter((b) => !q || String(b.billNumber ?? "").toLowerCase().includes(q) || String(b.patientName ?? "").toLowerCase().includes(q) || String(b.patientNumber ?? "").toLowerCase().includes(q) || String(b.mobile ?? "").includes(q));
+  const actorIds = [...new Set(current(billEvents).map((e) => e.actorUserId).filter((id): id is string => Boolean(id)))];
+  const actors = await db.user.findMany({ where: { id: { in: actorIds } }, select: { id: true, name: true, email: true } });
+  const actorMap = new Map(actors.map((a) => [a.id, a]));
+  const bills = current(billEvents).map((e) => serializeBill(e, e.actorUserId ? actorMap.get(e.actorUserId) ?? null : null)).filter((b) => !q || String(b.billNumber ?? "").toLowerCase().includes(q) || String(b.patientName ?? "").toLowerCase().includes(q) || String(b.patientNumber ?? "").toLowerCase().includes(q) || String(b.mobile ?? "").includes(q));
   return NextResponse.json({ ...catalogue, bills });
 }
 
@@ -135,7 +138,7 @@ export async function POST(request: Request) {
     const status = newBalance === 0 ? "PAID" : totalPaid > 0 ? "PARTIALLY_PAID" : "UNPAID";
     const fy = financialYear();
     const receiptNo = await nextReceiptNumber(user.organizationId, fy);
-    const payment = { paymentId: crypto.randomUUID(), receiptNumber: receiptNo, amount: parsed.data.amount, method: parsed.data.method, notes: parsed.data.notes ?? "", paidAt: new Date().toISOString() };
+    const payment = { paymentId: crypto.randomUUID(), receiptNumber: receiptNo, createdByUserId: user.id, createdByUserName: user.name ?? null, createdByUserEmail: user.email, amount: parsed.data.amount, method: parsed.data.method, notes: parsed.data.notes ?? "", paidAt: new Date().toISOString() };
     const payments = Array.isArray(d.payments) ? [...d.payments, payment] : [payment];
     const updated = { ...d, amountPaid: totalPaid, balanceDue: newBalance, paymentStatus: status, payments };
     const event = await db.auditEvent.create({ data: { organizationId: user.organizationId, actorUserId: user.id, resourceType: "BILL", resourceId: parsed.data.billId, action: "BILL_PAYMENT_RECORDED", metadata: updated } });
@@ -212,7 +215,7 @@ export async function POST(request: Request) {
   const fy = financialYear();
   const billNumber = await nextDocumentNumber(user.organizationId, "BILL", "billNumber", "INV/" + fy + "/");
   const billId = crypto.randomUUID();
-  const initialPayments = initialPayment > 0 ? [{ paymentId: crypto.randomUUID(), receiptNumber: await nextReceiptNumber(user.organizationId, fy), amount: initialPayment, method: parsed.data.paymentMethod ?? "CASH", notes: parsed.data.paymentNotes ?? "", paidAt: new Date().toISOString() }] : [];
+  const initialPayments = initialPayment > 0 ? [{ paymentId: crypto.randomUUID(), receiptNumber: await nextReceiptNumber(user.organizationId, fy), createdByUserId: user.id, createdByUserName: user.name ?? null, createdByUserEmail: user.email, amount: initialPayment, method: parsed.data.paymentMethod ?? "CASH", notes: parsed.data.paymentNotes ?? "", paidAt: new Date().toISOString() }] : [];
 
   const metadata = {
     financialYear: fy,

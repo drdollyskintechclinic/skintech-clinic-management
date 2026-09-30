@@ -34,7 +34,7 @@ export async function GET(){
  const user=await access();
  const [plansE,sessionsE,treatE,packagesE,patientE,users]=await Promise.all([
   events(user.organizationId,"PATIENT_TREATMENT"),events(user.organizationId,"TREATMENT_SESSION"),events(user.organizationId,"TREATMENT"),events(user.organizationId,"TREATMENT_PACKAGE"),events(user.organizationId,"PATIENT"),
-  db.user.findMany({where:{organizationId:user.organizationId},select:{id:true,name:true,email:true}})
+  db.user.findMany({where:{userRoles:{some:{organizationId:user.organizationId}}},select:{id:true,name:true,email:true}})
  ]);
  const treatments=current(treatE).map(e=>({id:e.resourceId??e.id,...getData(e)})).filter(t=>String(t.status??"ACTIVE")==="ACTIVE");
  const packages=current(packagesE).map(e=>({id:e.resourceId??e.id,...getData(e)})).filter(p=>String(p.status??"ACTIVE")==="ACTIVE");

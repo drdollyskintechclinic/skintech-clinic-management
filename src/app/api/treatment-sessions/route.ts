@@ -73,6 +73,9 @@ export async function POST(req:Request){
   const scheduledSession=allSessions.find(e=>String(getData(e).status)==="SCHEDULED");
   if(scheduledSession)return NextResponse.json({error:"A scheduled session already exists. Complete, cancel, or edit that session before creating the next one."},{status:400});
   const sessionNumber=allSessions.reduce((max,e)=>Math.max(max,Number(getData(e).sessionNumber??0)),0)+1;
+  const previousSession=allSessions.find(e=>Number(getData(e).sessionNumber)===sessionNumber-1);
+  const previousDate=previousSession?String(getData(previousSession).sessionDate??""):"";
+  if(previousDate&&p.data.sessionDate<previousDate)return NextResponse.json({error:"Session date cannot be earlier than the previous session date ("+previousDate+")."},{status:400});
   const totalSessions=Number(planData.totalSessions??1);
   if(sessionNumber>totalSessions)return NextResponse.json({error:"All package sessions have already been recorded."},{status:400});
   const performedId=p.data.performedByUserId||user.id;
@@ -93,6 +96,11 @@ export async function POST(req:Request){
   const existing=current(await events(user.organizationId,"TREATMENT_SESSION")).find(e=>e.resourceId===p.data.sessionId);
   if(!existing)return NextResponse.json({error:"Session not found."},{status:404});
   const old=getData(existing);
+  const planIdForDate=String(old.planId??"");
+  const priorSessions=current(await events(user.organizationId,"TREATMENT_SESSION")).filter(e=>String(getData(e).planId)===planIdForDate&&e.resourceId!==p.data.sessionId);
+  const previousSession=priorSessions.find(e=>Number(getData(e).sessionNumber)===Number(old.sessionNumber)-1);
+  const previousDate=previousSession?String(getData(previousSession).sessionDate??""):"";
+  if(previousDate&&p.data.sessionDate<previousDate)return NextResponse.json({error:"Session date cannot be earlier than the previous session date ("+previousDate+")."},{status:400});
   const performerId=p.data.performedByUserId||String(old.performedByUserId||user.id);
   const performer=await db.user.findUnique({where:{id:performerId},select:{id:true,name:true,email:true}});
   const metadata={...old,sessionDate:p.data.sessionDate,status:p.data.status,performedByUserId:performer?.id??user.id,performedByUserName:performer?.name??user.name??"",notes:p.data.notes??""};

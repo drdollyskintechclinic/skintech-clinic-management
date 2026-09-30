@@ -5,8 +5,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 type Patient={id:string;patientNumber:string;name:string;mobile:string};
 type CatalogItem={id:string;type:"TREATMENT"|"PACKAGE";name:string;price:number;category?:string;sessions?:number};
 type Line={type:"TREATMENT"|"PACKAGE";catalogueId:string;name:string;quantity:number;unitPrice:number;discountAmount:number};
-type Payment={paymentId:string;receiptNumber:string;amount:number;method:string;paidAt:string;notes:string};
-type Bill={id:string;billNumber:string;financialYear?:string;createdAt?:string;createdByUserId?:string;billDate:string;patientId:string;patientNumber:string;patientName:string;mobile:string;lineItems:Line[];subtotal:number;billDiscount:number;taxableAmount:number;taxRate:number;taxAmount:number;grandTotal:number;amountPaid:number;balanceDue:number;paymentStatus:string;payments:Payment[];notes?:string};
+type Payment={paymentId:string;receiptNumber:string;createdByUserId?:string;createdByUserName?:string|null;createdByUserEmail?:string;amount:number;method:string;paidAt:string;notes:string};
+type Bill={id:string;billNumber:string;financialYear?:string;createdAt?:string;createdByUserId?:string;actorUserId?:string;actorUserName?:string|null;actorUserEmail?:string;billDate:string;patientId:string;patientNumber:string;patientName:string;mobile:string;lineItems:Line[];subtotal:number;billDiscount:number;taxableAmount:number;taxRate:number;taxAmount:number;grandTotal:number;amountPaid:number;balanceDue:number;paymentStatus:string;payments:Payment[];notes?:string};
 
 const methods=[["CASH","Cash"],["UPI","UPI"],["CARD","Card"],["BANK_TRANSFER","Bank Transfer"],["OTHER","Other"]];
 const money=(n:number)=>"₹"+Number(n||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});

@@ -23,6 +23,8 @@ const billSchema = z.object({
   appointmentId: z.string().uuid().optional().or(z.literal("")),
   lineItems: z.array(lineSchema).min(1).max(50),
   billDiscount: z.coerce.number().min(0).max(10000000),
+  billDiscountType: z.enum(["AMOUNT","PERCENT"]).default("AMOUNT"),
+  billDiscountPercent: z.coerce.number().min(0).max(100).default(0),
   taxRate: z.coerce.number().min(0).max(100),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
   initialPayment: z.coerce.number().min(0).max(10000000),
@@ -160,7 +162,7 @@ export async function POST(request: Request) {
     const grandTotal = Number((taxableAmount + taxAmount).toFixed(2));
     const amountPaid = Number(d.amountPaid ?? 0);
     if (grandTotal < amountPaid) return NextResponse.json({ error: "Bill total cannot be lower than the amount already paid." }, { status: 400 });
-    const updated = { ...d, lineItems: calculatedItems, subtotal, billDiscount, taxableAmount, taxRate: parsed.data.taxRate, taxAmount, grandTotal, balanceDue: Number((grandTotal - amountPaid).toFixed(2)), paymentStatus: grandTotal === amountPaid ? "PAID" : amountPaid > 0 ? "PARTIALLY_PAID" : "UNPAID", notes: parsed.data.notes ?? "" };
+    const updated = { ...d, lineItems: calculatedItems, subtotal, billDiscount, billDiscountType: parsed.data.billDiscountType, billDiscountPercent: parsed.data.billDiscountType === "PERCENT" ? parsed.data.billDiscountPercent : Number((subtotal ? billDiscount / subtotal * 100 : 0).toFixed(2)), taxableAmount, taxRate: parsed.data.taxRate, taxAmount, grandTotal, balanceDue: Number((grandTotal - amountPaid).toFixed(2)), paymentStatus: grandTotal === amountPaid ? "PAID" : amountPaid > 0 ? "PARTIALLY_PAID" : "UNPAID", notes: parsed.data.notes ?? "" };
     const event = await db.auditEvent.create({ data: { organizationId: user.organizationId, actorUserId: user.id, resourceType: "BILL", resourceId: billId.data, action: "BILL_UPDATED", metadata: updated } });
     return NextResponse.json({ bill: serializeBill(event as Event) });
   }
@@ -198,7 +200,8 @@ export async function POST(request: Request) {
     return { ...item, discountAmount: discount, total: Math.max(0, gross - discount) };
   });
   const subtotal = calculatedItems.reduce((sum, item) => sum + item.total, 0);
-  const billDiscount = Math.min(subtotal, parsed.data.billDiscount);
+  const requestedBillDiscount = parsed.data.billDiscountType === "PERCENT" ? subtotal * parsed.data.billDiscountPercent / 100 : parsed.data.billDiscount;
+  const billDiscount = Math.min(subtotal, requestedBillDiscount);
   const taxableAmount = Math.max(0, subtotal - billDiscount);
   const taxAmount = Number((taxableAmount * parsed.data.taxRate / 100).toFixed(2));
   const grandTotal = Number((taxableAmount + taxAmount).toFixed(2));

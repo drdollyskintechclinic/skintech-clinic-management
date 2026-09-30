@@ -6,7 +6,7 @@ import { db } from "@/server/db/prisma";
 export const dynamic = "force-dynamic";
 type Event={id:string;occurredAt:Date;resourceId:string|null;action:string;metadata:unknown};
 const treatmentSchema=z.object({name:z.string().trim().min(2).max(160),category:z.string().trim().min(2).max(80),price:z.coerce.number().min(0).max(10000000),discountPercent:z.coerce.number().min(0).max(100),discountAmount:z.coerce.number().min(0).max(10000000),durationMinutes:z.coerce.number().int().min(0).max(1440),notes:z.string().trim().max(1000).optional().or(z.literal("")),status:z.enum(["ACTIVE","INACTIVE"]).default("ACTIVE")});
-const packageSchema=z.object({name:z.string().trim().min(2).max(160),treatmentId:z.string().uuid(),sessions:z.coerce.number().int().min(1).max(100),price:z.coerce.number().min(0).max(10000000),validityDays:z.coerce.number().int().min(1).max(3650),notes:z.string().trim().max(1000).optional().or(z.literal("")),status:z.enum(["ACTIVE","INACTIVE"]).default("ACTIVE")});
+const packageSchema=z.object({name:z.string().trim().min(2).max(160),treatmentId:z.string().uuid(),sessions:z.coerce.number().int().min(1).max(100),price:z.coerce.number().min(0).max(10000000),validityDays:z.coerce.number().int().min(1).max(3650),intervalBetweenSessionsDays:z.coerce.number().int().min(0).max(3650).default(0),notes:z.string().trim().max(1000).optional().or(z.literal("")),status:z.enum(["ACTIVE","INACTIVE"]).default("ACTIVE")});
 
 
 const standardTreatments = [
@@ -57,7 +57,7 @@ const standardTreatments = [
   {name:"Breast Tightening / Enlargement Consultation",category:"Cosmetic Gynecology",price:0,durationMinutes:45,notes:"Consultation/service details and pricing to be configured."}
 ];
 const suggestedPackages = [
-  {name:"Hair PRP - 3 Sessions",treatment:"Hair PRP",sessions:3,price:5500,validityDays:90,notes:"Starter package price; update as required."},
+  {name:"Hair PRP - 3 Sessions",treatment:"Hair PRP",sessions:3,price:5500,validityDays:90,intervalBetweenSessionsDays:30,notes:"Starter package price; update as required."},
   {name:"Hair PRP - 6 Sessions",treatment:"Hair PRP",sessions:6,price:10000,validityDays:180,notes:"Current clinic package price; update as required."},
   {name:"Hair PRP - 10 Sessions",treatment:"Hair PRP",sessions:10,price:15000,validityDays:270,notes:"Starter package price; update as required."},
   {name:"Hair GFC - 3 Sessions",treatment:"Hair GFC",sessions:3,price:7500,validityDays:90,notes:"Starter package price; update as required."},

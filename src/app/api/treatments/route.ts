@@ -56,7 +56,7 @@ const standardTreatments = [
   {name:"Vaginal Hair Laser Reduction",category:"Laser Hair Reduction",price:0,durationMinutes:45,notes:"Price to be configured."},
   {name:"Breast Tightening / Enlargement Consultation",category:"Cosmetic Gynecology",price:0,durationMinutes:45,notes:"Consultation/service details and pricing to be configured."}
 ];
-\nconst getData=(e:Event)=>(e.metadata??{}) as Record<string,unknown>;
+const getData=(e:Event)=>(e.metadata??{}) as Record<string,unknown>;
 async function events(org:string,type:string){return await db.auditEvent.findMany({where:{organizationId:org,resourceType:type},orderBy:{occurredAt:"desc"},take:5000}) as Event[];}
 function current(es:Event[]){const m=new Map<string,Event>();for(const e of es){const id=e.resourceId??e.id;if(!m.has(id))m.set(id,e);}return [...m.values()].filter(e=>!e.action.endsWith("_DELETED"));}
 export async function GET(){const user=await requirePermission("staff.manage");const [te,pe]=await Promise.all([events(user.organizationId,"TREATMENT"),events(user.organizationId,"TREATMENT_PACKAGE")]);const treatments=current(te).map(e=>({id:e.resourceId??e.id,...getData(e)}));const ids=new Set(treatments.map(t=>t.id));const packages=current(pe).map(e=>({id:e.resourceId??e.id,...getData(e)})).filter(p=>typeof p.treatmentId==="string"&&ids.has(p.treatmentId));return NextResponse.json({treatments,packages});}

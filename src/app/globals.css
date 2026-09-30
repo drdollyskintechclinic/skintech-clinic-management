@@ -195,3 +195,7 @@ h2 { margin-top: 0; }
 .status-active { display: inline-block; width: fit-content; color: #166534; background: #ecfdf5; border: 1px solid #bbf7d0; border-radius: 999px; padding: .2rem .5rem; font-weight: 700; font-size: .72rem; }
 .status-inactive { display: inline-block; width: fit-content; color: #6b7280; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 999px; padding: .2rem .5rem; font-weight: 700; font-size: .72rem; }
 @media (max-width: 700px) { .catalogue-modal-backdrop { padding: .75rem; } .catalogue-modal { max-height: calc(100vh - 1.5rem); } }
+
+.catalogue-treatment-row { grid-template-columns: minmax(150px,1.4fr) minmax(100px,1fr) 95px 85px 85px minmax(150px,1.4fr) 120px; }
+.catalogue-package-row { grid-template-columns: minmax(150px,1.4fr) minmax(130px,1.2fr) 75px 95px 90px 85px minmax(130px,1.2fr) 120px; }
+@media (max-width: 700px) { .catalogue-treatment-row { grid-template-columns: 170px 120px 90px 90px 90px 230px 120px; } .catalogue-package-row { grid-template-columns: 170px 150px 80px 95px 95px 90px 230px 120px; } }

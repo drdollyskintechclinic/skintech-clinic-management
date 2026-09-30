@@ -42,7 +42,7 @@ export async function GET(){
  const plans=current(plansE).map(e=>({id:e.resourceId??e.id,...getData(e)}));
  const sessions=current(sessionsE).map(e=>({id:e.resourceId??e.id,...getData(e)}));
  const userMap=Object.fromEntries(users.map(u=>[u.id,{name:u.name,email:u.email}]));
- return NextResponse.json({plans,sessions,treatments,packages,patients,users:userMap});
+ return NextResponse.json({plans,sessions,treatments,packages,patients,users:userMap,isAdmin:hasPermission(user.permissions,"platform.manage")});
 }
 export async function POST(req:Request){
  const user=await access();
@@ -89,6 +89,26 @@ export async function POST(req:Request){
    await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"PATIENT_TREATMENT",resourceId:p.data.planId,action:"PATIENT_TREATMENT_UPDATED",metadata:updated}});
   }
   return NextResponse.json({id:sessionId,sessionNumber},{status:201});
+ }
+ if(body.action==="delete-session"){
+  if(!hasPermission(user.permissions,"platform.manage"))throw new AuthorizationError();
+  const p=z.object({sessionId:z.string().uuid()}).safeParse(body.data);
+  if(!p.success)return NextResponse.json({error:"Invalid session."},{status:400});
+  const existing=current(await events(user.organizationId,"TREATMENT_SESSION")).find(e=>e.resourceId===p.data.sessionId);
+  if(!existing)return NextResponse.json({error:"Session not found."},{status:404});
+  const old=getData(existing);
+  await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"TREATMENT_SESSION",resourceId:p.data.sessionId,action:"TREATMENT_SESSION_DELETED",metadata:{...old,deletedByUserId:user.id,deletedByUserName:user.name??""}}});
+  const planId=String(old.planId??"");
+  const plan=current(await events(user.organizationId,"PATIENT_TREATMENT")).find(e=>e.resourceId===planId);
+  if(plan){
+   const planData=getData(plan);
+   const remaining=current(await events(user.organizationId,"TREATMENT_SESSION")).filter(e=>String(getData(e).planId)===planId&&e.resourceId!==p.data.sessionId);
+   const completed=remaining.filter(e=>String(getData(e).status)==="COMPLETED").length;
+   const totalSessions=Number(planData.totalSessions??1);
+   const updated={...planData,sessionsCompleted:completed,status:completed>=totalSessions?"COMPLETED":"ACTIVE"};
+   await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"PATIENT_TREATMENT",resourceId:planId,action:"PATIENT_TREATMENT_UPDATED",metadata:updated}});
+  }
+  return NextResponse.json({ok:true});
  }
  if(body.action==="update-session"){
   const p=z.object({sessionId:z.string().uuid(),sessionDate:z.string().min(10),status:z.enum(["SCHEDULED","COMPLETED","CANCELLED"]),performedByUserId:z.string().uuid().optional().or(z.literal("")),notes:z.string().trim().max(3000).optional().or(z.literal(""))}).safeParse(body.data);

@@ -11,6 +11,7 @@ const navigation = [
   { href: "/app/consultation-templates", label: "Consultation Templates" },
   { href: "/app/treatments", label: "Treatments & Packages" },
   { href: "/app/billing", label: "Billing & Payments" },
+  { href: "/app/treatment-sessions", label: "Treatment & Sessions" },
 ];
 
 export default async function ApplicationLayout({ children }: Readonly<{ children: React.ReactNode }>) {

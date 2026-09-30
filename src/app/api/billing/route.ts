@@ -112,6 +112,7 @@ export async function POST(request: Request) {
   }
 
   const parsed = billSchema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: "Please check the bill details.", details: parsed.error.flatten() }, { status: 400 });
   if (!parsed.success) return NextResponse.json({ error: "Please check the bill details." }, { status: 400 });
   const p = await patient(user.organizationId, parsed.data.patientId);
   if (!p) return NextResponse.json({ error: "Patient not found." }, { status: 404 });

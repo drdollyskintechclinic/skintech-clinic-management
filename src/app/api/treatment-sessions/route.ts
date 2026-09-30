@@ -13,7 +13,7 @@ const planSchema=z.object({
   startDate:z.string().min(10),
   totalSessions:z.coerce.number().int().min(1).max(100),
   validityDays:z.coerce.number().int().min(1).max(3650),
-  notes:z.string().trim().max(2000).optional().or(z.literal(""))
+  intervalBetweenSessionsDays:z.coerce.number().int().min(0).max(3650).default(0),notes:z.string().trim().max(2000).optional().or(z.literal(""))
 });
 const sessionSchema=z.object({
   planId:z.string().uuid(),
@@ -60,7 +60,7 @@ export async function POST(req:Request){
   const planId=crypto.randomUUID();
   const start=new Date(p.data.startDate+"T00:00:00+05:30");
   const expiry=new Date(start.getTime()+p.data.validityDays*86400000);
-  const metadata={patientId:p.data.patientId,patientNumber:String(d.patientNumber??""),patientName:String(d.name??""),mobile:String(d.mobile??""),treatmentId:p.data.treatmentId,treatmentName:String(td.name??""),packageId:p.data.packageId||"",packageName:String(pd?.name??""),totalSessions,sessionsCompleted:0,startDate:p.data.startDate,expiryDate:expiry.toISOString().slice(0,10),status:"ACTIVE",notes:p.data.notes??"",createdByUserId:user.id,createdByUserName:user.name??""};
+  const metadata={patientId:p.data.patientId,patientNumber:String(d.patientNumber??""),patientName:String(d.name??""),mobile:String(d.mobile??""),treatmentId:p.data.treatmentId,treatmentName:String(td.name??""),packageId:p.data.packageId||"",packageName:String(pd?.name??""),intervalBetweenSessionsDays:Number(pd?.intervalBetweenSessionsDays??0),totalSessions,sessionsCompleted:0,startDate:p.data.startDate,expiryDate:expiry.toISOString().slice(0,10),status:"ACTIVE",notes:p.data.notes??"",createdByUserId:user.id,createdByUserName:user.name??""};
   await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"PATIENT_TREATMENT",resourceId:planId,action:"PATIENT_TREATMENT_CREATED",metadata}});
   return NextResponse.json({id:planId},{status:201});
  }

@@ -60,8 +60,20 @@ export async function POST(req:Request){
   const planId=crypto.randomUUID();
   const start=new Date(p.data.startDate+"T00:00:00+05:30");
   const expiry=new Date(start.getTime()+p.data.validityDays*86400000);
-  const metadata={patientId:p.data.patientId,patientNumber:String(d.patientNumber??""),patientName:String(d.name??""),mobile:String(d.mobile??""),treatmentId:p.data.treatmentId,treatmentName:String(td.name??""),packageId:p.data.packageId||"",packageName:String(pd?.name??""),intervalBetweenSessionsDays:Number(pd?.intervalBetweenSessionsDays??0),totalSessions,sessionsCompleted:0,startDate:p.data.startDate,expiryDate:expiry.toISOString().slice(0,10),status:"ACTIVE",notes:p.data.notes??"",createdByUserId:user.id,createdByUserName:user.name??""};
+  const intervalBetweenSessionsDays=Number(pd?.intervalBetweenSessionsDays??(p.data.packageId?30:0));
+  const expiryDate=expiry.toISOString().slice(0,10);
+  const metadata={patientId:p.data.patientId,patientNumber:String(d.patientNumber??""),patientName:String(d.name??""),mobile:String(d.mobile??""),treatmentId:p.data.treatmentId,treatmentName:String(td.name??""),packageId:p.data.packageId||"",packageName:String(pd?.name??""),intervalBetweenSessionsDays,totalSessions,sessionsCompleted:0,startDate:p.data.startDate,expiryDate,status:"ACTIVE",notes:p.data.notes??"",createdByUserId:user.id,createdByUserName:user.name??""};
   await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"PATIENT_TREATMENT",resourceId:planId,action:"PATIENT_TREATMENT_CREATED",metadata}});
+  const baseDate=new Date(p.data.startDate+"T00:00:00Z");
+  for(let i=1;i<=totalSessions;i++){
+   const sessionDate=new Date(baseDate);
+   sessionDate.setUTCDate(sessionDate.getUTCDate()+((i-1)*intervalBetweenSessionsDays));
+   const date=sessionDate.toISOString().slice(0,10);
+   if(date>expiryDate)break;
+   const sessionId=crypto.randomUUID();
+   const sessionMetadata={planId,patientId:p.data.patientId,patientNumber:String(d.patientNumber??""),patientName:String(d.name??""),treatmentId:p.data.treatmentId,treatmentName:String(td.name??""),packageId:p.data.packageId||"",packageName:String(pd?.name??""),sessionNumber:i,totalSessions,sessionDate:date,status:"SCHEDULED",performedByUserId:user.id,performedByUserName:user.name??"",notes:""};
+   await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"TREATMENT_SESSION",resourceId:sessionId,action:"TREATMENT_SESSION_CREATED",metadata:sessionMetadata}});
+  }
   return NextResponse.json({id:planId},{status:201});
  }
  if(body.action==="create-session"){

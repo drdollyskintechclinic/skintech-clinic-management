@@ -12,6 +12,7 @@ const navigation = [
   { href: "/app/treatments", label: "Treatments & Packages" },
   { href: "/app/billing", label: "Billing & Payments" },
   { href: "/app/treatment-sessions", label: "Treatment & Sessions" },
+  { href: "/app/follow-ups", label: "Follow-ups" },
 ];
 
 export default async function ApplicationLayout({ children }: Readonly<{ children: React.ReactNode }>) {

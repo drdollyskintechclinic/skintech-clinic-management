@@ -15,7 +15,7 @@ const lineSchema = z.object({
   quantity: z.coerce.number().int().min(1).max(100),
   unitPrice: z.coerce.number().min(0).max(10000000),
   discountAmount: z.coerce.number().min(0).max(10000000),
-  total: z.coerce.number().min(0).max(10000000)
+  total: z.coerce.number().min(0).max(10000000).optional()
 });
 
 const billSchema = z.object({
@@ -38,6 +38,21 @@ const paymentSchema = z.object({
 });
 
 function data(event: Event) { return (event.metadata ?? {}) as Record<string, unknown>; }
+
+function financialYear(date = indiaDate()) {
+  const [year, month] = date.split("-").map(Number);
+  return month >= 4 ? `${year}-${String(year + 1).slice(-2)}` : `${year - 1}-${String(year).slice(-2)}`;
+}
+
+async function nextDocumentNumber(org: string, resourceType: string, key: string, prefix: string) {
+  const es = await events(org, resourceType);
+  let max = 0;
+  for (const e of es) {
+    const value = String(data(e)[key] ?? "");
+    if (value.startsWith(prefix)) max = Math.max(max, Number(value.slice(prefix.length)) || 0);
+  }
+  return prefix + String(max + 1).padStart(4, "0");
+}
 
 function indiaDate() {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
@@ -104,10 +119,66 @@ export async function POST(request: Request) {
     const totalPaid = Number(d.amountPaid ?? 0) + parsed.data.amount;
     const newBalance = Math.max(0, Number(d.grandTotal ?? 0) - totalPaid);
     const status = newBalance === 0 ? "PAID" : totalPaid > 0 ? "PARTIALLY_PAID" : "UNPAID";
-    const payment = { paymentId: crypto.randomUUID(), amount: parsed.data.amount, method: parsed.data.method, notes: parsed.data.notes ?? "", paidAt: new Date().toISOString() };
+    const fy = financialYear();
+    const receiptNumber = await nextDocumentNumber(user.organizationId, "BILL", "receiptNumberSequenceKey", ""); 
+    const existingReceiptNumbers = (Array.isArray(d.payments) ? d.payments : []).map((p) => String((p as Record<string, unknown>).receiptNumber ?? "")).filter(Boolean);
+    const allBills = current(await events(user.organizationId, "BILL"));
+    let maxReceipt = 0;
+    for (const bill of allBills) for (const p of (Array.isArray(data(bill).payments) ? data(bill).payments : [])) {
+      const n = String((p as Record<string, unknown>).receiptNumber ?? "");
+      if (n.startsWith("RCT/" + fy + "/")) maxReceipt = Math.max(maxReceipt, Number(n.split("/").pop()) || 0);
+    }
+    const receiptNo = "RCT/" + fy + "/" + String(maxReceipt + 1).padStart(4, "0");
+    const payment = { paymentId: crypto.randomUUID(), receiptNumber: receiptNo, amount: parsed.data.amount, method: parsed.data.method, notes: parsed.data.notes ?? "", paidAt: new Date().toISOString() };
     const payments = Array.isArray(d.payments) ? [...d.payments, payment] : [payment];
     const updated = { ...d, amountPaid: totalPaid, balanceDue: newBalance, paymentStatus: status, payments };
     const event = await db.auditEvent.create({ data: { organizationId: user.organizationId, actorUserId: user.id, resourceType: "BILL", resourceId: parsed.data.billId, action: "BILL_PAYMENT_RECORDED", metadata: updated } });
+    return NextResponse.json({ bill: serializeBill(event as Event) });
+  }
+
+  if (body.action === "edit-bill") {
+    const billId = z.string().uuid().safeParse(body.billId);
+    if (!billId.success) return NextResponse.json({ error: "Invalid bill." }, { status: 400 });
+    const existing = current(await events(user.organizationId, "BILL")).find((e) => (e.resourceId ?? e.id) === billId.data);
+    if (!existing) return NextResponse.json({ error: "Bill not found." }, { status: 404 });
+    const parsed = billSchema.omit({ patientId: true, appointmentId: true, initialPayment: true, paymentMethod: true, paymentNotes: true }).safeParse(body);
+    if (!parsed.success) return NextResponse.json({ error: "Please check the bill details.", details: parsed.error.flatten() }, { status: 400 });
+    const d = data(existing);
+    const calculatedItems = parsed.data.lineItems.map((item) => {
+      const gross = item.unitPrice * item.quantity;
+      const discount = Math.min(gross, item.discountAmount);
+      return { ...item, discountAmount: discount, total: Math.max(0, gross - discount) };
+    });
+    const subtotal = calculatedItems.reduce((sum, item) => sum + item.total, 0);
+    const billDiscount = Math.min(subtotal, parsed.data.billDiscount);
+    const taxableAmount = Math.max(0, subtotal - billDiscount);
+    const taxAmount = Number((taxableAmount * parsed.data.taxRate / 100).toFixed(2));
+    const grandTotal = Number((taxableAmount + taxAmount).toFixed(2));
+    const amountPaid = Number(d.amountPaid ?? 0);
+    if (grandTotal < amountPaid) return NextResponse.json({ error: "Bill total cannot be lower than the amount already paid." }, { status: 400 });
+    const updated = { ...d, lineItems: calculatedItems, subtotal, billDiscount, taxableAmount, taxRate: parsed.data.taxRate, taxAmount, grandTotal, balanceDue: Number((grandTotal - amountPaid).toFixed(2)), paymentStatus: grandTotal === amountPaid ? "PAID" : amountPaid > 0 ? "PARTIALLY_PAID" : "UNPAID", notes: parsed.data.notes ?? "" };
+    const event = await db.auditEvent.create({ data: { organizationId: user.organizationId, actorUserId: user.id, resourceType: "BILL", resourceId: billId.data, action: "BILL_UPDATED", metadata: updated } });
+    return NextResponse.json({ bill: serializeBill(event as Event) });
+  }
+
+  if (body.action === "edit-payment") {
+    const parsed = z.object({ billId: z.string().uuid(), paymentId: z.string().uuid(), amount: z.coerce.number().positive().max(10000000), method: z.enum(["CASH","UPI","CARD","BANK_TRANSFER","OTHER"]), notes: z.string().trim().max(500).optional().or(z.literal("")) }).safeParse(body);
+    if (!parsed.success) return NextResponse.json({ error: "Please check the receipt details.", details: parsed.error.flatten() }, { status: 400 });
+    const existing = current(await events(user.organizationId, "BILL")).find((e) => (e.resourceId ?? e.id) === parsed.data.billId);
+    if (!existing) return NextResponse.json({ error: "Bill not found." }, { status: 404 });
+    const d = data(existing);
+    const payments = Array.isArray(d.payments) ? [...d.payments] as Array<Record<string, unknown>> : [];
+    const index = payments.findIndex((p) => String(p.paymentId ?? "") === parsed.data.paymentId);
+    if (index < 0) return NextResponse.json({ error: "Receipt not found." }, { status: 404 });
+    const oldAmount = Number(payments[index].amount ?? 0);
+    const grandTotal = Number(d.grandTotal ?? 0);
+    const otherPaid = Number(d.amountPaid ?? 0) - oldAmount;
+    if (otherPaid + parsed.data.amount > grandTotal) return NextResponse.json({ error: "Receipt amount cannot make total payments greater than the bill total." }, { status: 400 });
+    payments[index] = { ...payments[index], amount: parsed.data.amount, method: parsed.data.method, notes: parsed.data.notes ?? "" };
+    const amountPaid = otherPaid + parsed.data.amount;
+    const balanceDue = Number((grandTotal - amountPaid).toFixed(2));
+    const updated = { ...d, payments, amountPaid, balanceDue, paymentStatus: balanceDue === 0 ? "PAID" : amountPaid > 0 ? "PARTIALLY_PAID" : "UNPAID" };
+    const event = await db.auditEvent.create({ data: { organizationId: user.organizationId, actorUserId: user.id, resourceType: "BILL", resourceId: parsed.data.billId, action: "BILL_RECEIPT_UPDATED", metadata: updated } });
     return NextResponse.json({ bill: serializeBill(event as Event) });
   }
 
@@ -131,19 +202,20 @@ export async function POST(request: Request) {
   const balanceDue = Number((grandTotal - initialPayment).toFixed(2));
   const paymentStatus = balanceDue === 0 ? "PAID" : initialPayment > 0 ? "PARTIALLY_PAID" : "UNPAID";
 
-  const prefix = indiaDate().replaceAll("-", "").slice(2);
-  const existingBills = current(await events(user.organizationId, "BILL"));
-  const sequence = Math.max(0, ...existingBills.map((e) => String(data(e).billNumber ?? "")).filter((n) => n.startsWith("BL" + prefix)).map((n) => Number(n.slice(("BL" + prefix).length)) || 0)) + 1;
-  const billNumber = "BL" + prefix + String(sequence).padStart(3, "0");
+  const fy = financialYear();
+  const billNumber = await nextDocumentNumber(user.organizationId, "BILL", "billNumber", "INV/" + fy + "/");
   const billId = crypto.randomUUID();
-  const initialPayments = initialPayment > 0 ? [{ paymentId: crypto.randomUUID(), amount: initialPayment, method: parsed.data.paymentMethod ?? "CASH", notes: parsed.data.paymentNotes ?? "", paidAt: new Date().toISOString() }] : [];
+  const initialPayments = initialPayment > 0 ? [{ paymentId: crypto.randomUUID(), receiptNumber: await nextDocumentNumber(user.organizationId, "BILL", "receiptNumberSequenceKey", "RCT/" + fy + "/"), amount: initialPayment, method: parsed.data.paymentMethod ?? "CASH", notes: parsed.data.paymentNotes ?? "", paidAt: new Date().toISOString() }] : [];
 
   const metadata = {
+    financialYear: fy,
     billNumber, billDate: indiaDate(), patientId: p.id, patientNumber: p.patientNumber, patientName: p.name, mobile: p.mobile, city: p.city,
-    appointmentId: parsed.data.appointmentId ?? "", lineItems: calculatedItems, subtotal, billDiscount, taxableAmount, taxRate: parsed.data.taxRate, taxAmount, grandTotal,
+    lineItems: calculatedItems, subtotal, billDiscount, taxableAmount, taxRate: parsed.data.taxRate, taxAmount, grandTotal,
     amountPaid: initialPayment, balanceDue, paymentStatus, payments: initialPayments, notes: parsed.data.notes ?? ""
   };
 
   const event = await db.auditEvent.create({ data: { organizationId: user.organizationId, actorUserId: user.id, resourceType: "BILL", resourceId: billId, action: "BILL_CREATED", metadata } });
   return NextResponse.json({ bill: serializeBill(event as Event) }, { status: 201 });
 }
+
+

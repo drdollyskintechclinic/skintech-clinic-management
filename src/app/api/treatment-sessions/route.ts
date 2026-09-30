@@ -70,7 +70,9 @@ export async function POST(req:Request){
   if(!plan)return NextResponse.json({error:"Treatment plan not found."},{status:404});
   const planData=getData(plan);
   const allSessions=current(await events(user.organizationId,"TREATMENT_SESSION")).filter(e=>String(getData(e).planId)===p.data.planId);
-  const sessionNumber=allSessions.length+1;
+  const scheduledSession=allSessions.find(e=>String(getData(e).status)==="SCHEDULED");
+  if(scheduledSession)return NextResponse.json({error:"A scheduled session already exists. Complete, cancel, or edit that session before creating the next one."},{status:400});
+  const sessionNumber=allSessions.reduce((max,e)=>Math.max(max,Number(getData(e).sessionNumber??0)),0)+1;
   const totalSessions=Number(planData.totalSessions??1);
   if(sessionNumber>totalSessions)return NextResponse.json({error:"All package sessions have already been recorded."},{status:400});
   const performedId=p.data.performedByUserId||user.id;
@@ -84,6 +86,28 @@ export async function POST(req:Request){
    await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"PATIENT_TREATMENT",resourceId:p.data.planId,action:"PATIENT_TREATMENT_UPDATED",metadata:updated}});
   }
   return NextResponse.json({id:sessionId,sessionNumber},{status:201});
+ }
+ if(body.action==="update-session"){
+  const p=z.object({sessionId:z.string().uuid(),sessionDate:z.string().min(10),status:z.enum(["SCHEDULED","COMPLETED","CANCELLED"]),performedByUserId:z.string().uuid().optional().or(z.literal("")),notes:z.string().trim().max(3000).optional().or(z.literal(""))}).safeParse(body.data);
+  if(!p.success)return NextResponse.json({error:"Please check the session details."},{status:400});
+  const existing=current(await events(user.organizationId,"TREATMENT_SESSION")).find(e=>e.resourceId===p.data.sessionId);
+  if(!existing)return NextResponse.json({error:"Session not found."},{status:404});
+  const old=getData(existing);
+  const performerId=p.data.performedByUserId||String(old.performedByUserId||user.id);
+  const performer=await db.user.findUnique({where:{id:performerId},select:{id:true,name:true,email:true}});
+  const metadata={...old,sessionDate:p.data.sessionDate,status:p.data.status,performedByUserId:performer?.id??user.id,performedByUserName:performer?.name??user.name??"",notes:p.data.notes??""};
+  await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"TREATMENT_SESSION",resourceId:p.data.sessionId,action:"TREATMENT_SESSION_UPDATED",metadata}});
+  const planId=String(old.planId);
+  const plan=current(await events(user.organizationId,"PATIENT_TREATMENT")).find(e=>e.resourceId===planId);
+  if(plan){
+   const planData=getData(plan);
+   const all=current(await events(user.organizationId,"TREATMENT_SESSION")).filter(e=>String(getData(e).planId)===planId&&e.resourceId!==p.data.sessionId);
+   const completed=all.filter(e=>String(getData(e).status)==="COMPLETED").length+(p.data.status==="COMPLETED"?1:0);
+   const totalSessions=Number(planData.totalSessions??1);
+   const updated={...planData,sessionsCompleted:completed,status:completed>=totalSessions?"COMPLETED":"ACTIVE"};
+   await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"PATIENT_TREATMENT",resourceId:planId,action:"PATIENT_TREATMENT_UPDATED",metadata:updated}});
+  }
+  return NextResponse.json({ok:true});
  }
  return NextResponse.json({error:"Invalid action."},{status:400});
 }

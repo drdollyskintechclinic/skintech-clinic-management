@@ -11,7 +11,7 @@ type Bill={id:string;billNumber:string;financialYear?:string;createdAt?:string;c
 const methods=[["CASH","Cash"],["UPI","UPI"],["CARD","Card"],["BANK_TRANSFER","Bank Transfer"],["OTHER","Other"]];
 const money=(n:number)=>"₹"+Number(n||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
 const paymentLabel=(v:string)=>methods.find(([key])=>key===v)?.[1]??v;
-const clinicHeader='<div class="clinic-header"><h1>Dr Dolly\'s Skintech Clinic</h1><div>7756949015</div><div>drdollyskintechclinic@gmail.com</div><div>www.skintechnagpur.com</div><div>Abhinav Sankalp Apartment, Beside Haldiram, Padole Sqaure, Pratap Nagar, Nagpur, Maharashtra 440022</div></div>';
+const clinicHeader='<div class="clinic-header"><h1>Dr Dolly\'s Skintech Clinic</h1><div>Abhinav Sankalp Apartment, Beside Haldiram, Padole Sqaure, Pratap Nagar, Nagpur, Maharashtra 440022</div><div>drdollyskintechclinic@gmail.com&nbsp;&nbsp;,&nbsp;&nbsp;www.skintechnagpur.com&nbsp;&nbsp;,&nbsp;&nbsp;+91 775 694 9015</div></div>';
 
 export default function BillingPage(){
  const [catalogue,setCatalogue]=useState<CatalogItem[]>([]),[bills,setBills]=useState<Bill[]>([]),[search,setSearch]=useState(""),[open,setOpen]=useState(false),[paymentBill,setPaymentBill]=useState<Bill|null>(null),[viewBill,setViewBill]=useState<Bill|null>(null),[editBill,setEditBill]=useState<Bill|null>(null),[receiptBill,setReceiptBill]=useState<Bill|null>(null),[editPayment,setEditPayment]=useState<{bill:Bill;payment:Payment}|null>(null),[saving,setSaving]=useState(false),[error,setError]=useState("");

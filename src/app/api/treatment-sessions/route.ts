@@ -102,6 +102,20 @@ export async function POST(req:Request){
   }
   return NextResponse.json({id:sessionId,sessionNumber},{status:201});
  }
+ if(body.action==="delete-plan"){
+  if(!hasPermission(user.permissions,"platform.manage"))throw new AuthorizationError();
+  const p=z.object({planId:z.string().uuid()}).safeParse(body.data);
+  if(!p.success)return NextResponse.json({error:"Invalid treatment plan."},{status:400});
+  const plan=current(await events(user.organizationId,"PATIENT_TREATMENT")).find(e=>e.resourceId===p.data.planId);
+  if(!plan)return NextResponse.json({error:"Treatment plan not found."},{status:404});
+  const planData=getData(plan);
+  const planSessions=current(await events(user.organizationId,"TREATMENT_SESSION")).filter(e=>String(getData(e).planId)===p.data.planId);
+  for(const session of planSessions){
+   await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"TREATMENT_SESSION",resourceId:session.resourceId??session.id,action:"TREATMENT_SESSION_DELETED",metadata:{...getData(session),deletedByUserId:user.id,deletedByUserName:user.name??"",deletedWithPlan:true}}});
+  }
+  await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"PATIENT_TREATMENT",resourceId:p.data.planId,action:"PATIENT_TREATMENT_DELETED",metadata:{...planData,deletedByUserId:user.id,deletedByUserName:user.name??""}}});
+  return NextResponse.json({ok:true});
+ }
  if(body.action==="delete-session"){
   if(!hasPermission(user.permissions,"platform.manage"))throw new AuthorizationError();
   const p=z.object({sessionId:z.string().uuid()}).safeParse(body.data);

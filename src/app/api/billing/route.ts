@@ -54,6 +54,18 @@ async function nextDocumentNumber(org: string, resourceType: string, key: string
   return prefix + String(max + 1).padStart(4, "0");
 }
 
+async function nextReceiptNumber(org: string, fy: string) {
+  const es = await events(org, "BILL");
+  let max = 0;
+  for (const e of es) {
+    for (const p of (Array.isArray(data(e).payments) ? data(e).payments : [])) {
+      const n = String((p as Record<string, unknown>).receiptNumber ?? "");
+      if (n.startsWith("RCT/" + fy + "/")) max = Math.max(max, Number(n.split("/").pop()) || 0);
+    }
+  }
+  return "RCT/" + fy + "/" + String(max + 1).padStart(4, "0");
+}
+
 function indiaDate() {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
   const v = Object.fromEntries(parts.map((p) => [p.type, p.value]));
@@ -120,15 +132,7 @@ export async function POST(request: Request) {
     const newBalance = Math.max(0, Number(d.grandTotal ?? 0) - totalPaid);
     const status = newBalance === 0 ? "PAID" : totalPaid > 0 ? "PARTIALLY_PAID" : "UNPAID";
     const fy = financialYear();
-    const receiptNumber = await nextDocumentNumber(user.organizationId, "BILL", "receiptNumberSequenceKey", ""); 
-    const existingReceiptNumbers = (Array.isArray(d.payments) ? d.payments : []).map((p) => String((p as Record<string, unknown>).receiptNumber ?? "")).filter(Boolean);
-    const allBills = current(await events(user.organizationId, "BILL"));
-    let maxReceipt = 0;
-    for (const bill of allBills) for (const p of (Array.isArray(data(bill).payments) ? data(bill).payments : [])) {
-      const n = String((p as Record<string, unknown>).receiptNumber ?? "");
-      if (n.startsWith("RCT/" + fy + "/")) maxReceipt = Math.max(maxReceipt, Number(n.split("/").pop()) || 0);
-    }
-    const receiptNo = "RCT/" + fy + "/" + String(maxReceipt + 1).padStart(4, "0");
+    const receiptNo = await nextReceiptNumber(user.organizationId, fy);
     const payment = { paymentId: crypto.randomUUID(), receiptNumber: receiptNo, amount: parsed.data.amount, method: parsed.data.method, notes: parsed.data.notes ?? "", paidAt: new Date().toISOString() };
     const payments = Array.isArray(d.payments) ? [...d.payments, payment] : [payment];
     const updated = { ...d, amountPaid: totalPaid, balanceDue: newBalance, paymentStatus: status, payments };
@@ -205,7 +209,7 @@ export async function POST(request: Request) {
   const fy = financialYear();
   const billNumber = await nextDocumentNumber(user.organizationId, "BILL", "billNumber", "INV/" + fy + "/");
   const billId = crypto.randomUUID();
-  const initialPayments = initialPayment > 0 ? [{ paymentId: crypto.randomUUID(), receiptNumber: await nextDocumentNumber(user.organizationId, "BILL", "receiptNumberSequenceKey", "RCT/" + fy + "/"), amount: initialPayment, method: parsed.data.paymentMethod ?? "CASH", notes: parsed.data.paymentNotes ?? "", paidAt: new Date().toISOString() }] : [];
+  const initialPayments = initialPayment > 0 ? [{ paymentId: crypto.randomUUID(), receiptNumber: await nextReceiptNumber(user.organizationId, fy), amount: initialPayment, method: parsed.data.paymentMethod ?? "CASH", notes: parsed.data.paymentNotes ?? "", paidAt: new Date().toISOString() }] : [];
 
   const metadata = {
     financialYear: fy,

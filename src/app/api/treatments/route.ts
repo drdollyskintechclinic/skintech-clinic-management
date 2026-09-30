@@ -7,7 +7,56 @@ export const dynamic = "force-dynamic";
 type Event={id:string;occurredAt:Date;resourceId:string|null;action:string;metadata:unknown};
 const treatmentSchema=z.object({name:z.string().trim().min(2).max(160),category:z.string().trim().min(2).max(80),price:z.coerce.number().min(0).max(10000000),durationMinutes:z.coerce.number().int().min(0).max(1440),notes:z.string().trim().max(1000).optional().or(z.literal(""))});
 const packageSchema=z.object({name:z.string().trim().min(2).max(160),treatmentId:z.string().uuid(),sessions:z.coerce.number().int().min(1).max(100),price:z.coerce.number().min(0).max(10000000),validityDays:z.coerce.number().int().min(1).max(3650),notes:z.string().trim().max(1000).optional().or(z.literal(""))});
-const getData=(e:Event)=>(e.metadata??{}) as Record<string,unknown>;
+
+
+const standardTreatments = [
+  {name:"Consultation",category:"Clinical",price:0,durationMinutes:30,notes:"Initial clinical consultation. Set clinic consultation fee if applicable."},
+  {name:"Follow-up Consultation",category:"Clinical",price:0,durationMinutes:20,notes:"Follow-up clinical review."},
+  {name:"Hydrafacial",category:"Facial",price:999,durationMinutes:60,notes:"Basic Hydrafacial. Current clinic offer price noted; update as required."},
+  {name:"Advanced Hydrafacial",category:"Facial",price:1500,durationMinutes:60,notes:"Advanced Hydrafacial. Current clinic offer price noted; update as required."},
+  {name:"Glow MediFacial",category:"Facial",price:2000,durationMinutes:60,notes:"Current clinic offer price noted; update as required."},
+  {name:"MediFacial",category:"Facial",price:0,durationMinutes:60,notes:"Price to be configured."},
+  {name:"Carbon Laser Facial",category:"Laser",price:0,durationMinutes:45,notes:"Price to be configured."},
+  {name:"CO2 Fractional Laser",category:"Laser",price:0,durationMinutes:60,notes:"Price to be configured."},
+  {name:"Q-Switched Nd:YAG Laser",category:"Laser",price:0,durationMinutes:45,notes:"Price to be configured."},
+  {name:"Pico Laser",category:"Laser",price:0,durationMinutes:45,notes:"Price to be configured."},
+  {name:"Laser Hair Reduction",category:"Laser Hair Reduction",price:0,durationMinutes:45,notes:"Price varies by treatment area."},
+  {name:"Electrolysis",category:"Hair Removal",price:0,durationMinutes:45,notes:"For white/grey hair; price to be configured."},
+  {name:"Tattoo Removal",category:"Laser",price:0,durationMinutes:45,notes:"Price varies by tattoo size and area."},
+  {name:"Hair PRP",category:"Hair",price:2000,durationMinutes:60,notes:"Current single-session clinic offer price noted; update as required."},
+  {name:"Hair GFC",category:"Hair",price:2800,durationMinutes:60,notes:"Current single-session clinic offer price noted; update as required."},
+  {name:"Hair Patch Restoration",category:"Hair",price:0,durationMinutes:90,notes:"Non-surgical human hair patch restoration; price to be configured."},
+  {name:"MNRF",category:"Skin",price:0,durationMinutes:60,notes:"Price to be configured."},
+  {name:"HIFU",category:"Aesthetic",price:0,durationMinutes:60,notes:"Price varies by indication/area."},
+  {name:"IV Glutathione Therapy",category:"IV Therapy",price:0,durationMinutes:60,notes:"Price to be configured according to protocol and formulation."},
+  {name:"Botox",category:"Injectables",price:0,durationMinutes:45,notes:"Price depends on indication/units."},
+  {name:"Dermal Fillers",category:"Injectables",price:0,durationMinutes:60,notes:"Price depends on product and quantity."},
+  {name:"Thread Lift",category:"Injectables",price:0,durationMinutes:90,notes:"Price depends on area and threads used."},
+  {name:"Eyebrow Microblading",category:"PMU",price:0,durationMinutes:120,notes:"Semi-permanent eyebrow procedure; price to be configured."},
+  {name:"Ombre Brows",category:"PMU",price:0,durationMinutes:120,notes:"Semi-permanent eyebrow procedure; price to be configured."},
+  {name:"Powder Brows",category:"PMU",price:0,durationMinutes:120,notes:"Semi-permanent eyebrow procedure; price to be configured."},
+  {name:"Lip Blush",category:"PMU",price:0,durationMinutes:120,notes:"Lip pigmentation / semi-permanent makeup; price to be configured."},
+  {name:"Scalp Micropigmentation",category:"PMU",price:0,durationMinutes:120,notes:"Price to be configured."},
+  {name:"Earlobe Repair",category:"Minor Procedure",price:0,durationMinutes:60,notes:"Price to be configured."},
+  {name:"Gunshot Ear Piercing",category:"Minor Procedure",price:0,durationMinutes:30,notes:"Price to be configured."},
+  {name:"Skin Tag Removal",category:"Minor Procedure",price:0,durationMinutes:30,notes:"Price to be configured."},
+  {name:"Wart Removal",category:"Minor Procedure",price:0,durationMinutes:30,notes:"Price to be configured."},
+  {name:"Mole Removal",category:"Minor Procedure",price:0,durationMinutes:30,notes:"Price to be configured."},
+  {name:"Chemical Peel",category:"Skin",price:0,durationMinutes:45,notes:"Price varies by peel and indication."},
+  {name:"Dermaplaning",category:"Skin",price:0,durationMinutes:45,notes:"Price to be configured."},
+  {name:"Microdermabrasion",category:"Skin",price:0,durationMinutes:45,notes:"Price to be configured."},
+  {name:"Photofacial",category:"Skin",price:0,durationMinutes:45,notes:"Price to be configured."},
+  {name:"Skin Brightening",category:"Skin",price:0,durationMinutes:45,notes:"Price to be configured."},
+  {name:"BB Glow Facial",category:"Facial",price:0,durationMinutes:60,notes:"Price to be configured."},
+  {name:"CC Glow Facial",category:"Facial",price:0,durationMinutes:60,notes:"Price to be configured."},
+  {name:"Stretch Mark Treatment",category:"Body Aesthetics",price:0,durationMinutes:60,notes:"Price varies by area and protocol."},
+  {name:"Vaginal Tightening - CO2 Laser",category:"Cosmetic Gynecology",price:0,durationMinutes:60,notes:"Price and availability to be configured."},
+  {name:"Vaginal Pigmentation Treatment",category:"Cosmetic Gynecology",price:0,durationMinutes:60,notes:"Price and availability to be configured."},
+  {name:"Thigh Pigmentation Treatment",category:"Body Aesthetics",price:0,durationMinutes:60,notes:"Price varies by area."},
+  {name:"Vaginal Hair Laser Reduction",category:"Laser Hair Reduction",price:0,durationMinutes:45,notes:"Price to be configured."},
+  {name:"Breast Tightening / Enlargement Consultation",category:"Cosmetic Gynecology",price:0,durationMinutes:45,notes:"Consultation/service details and pricing to be configured."}
+];
+\nconst getData=(e:Event)=>(e.metadata??{}) as Record<string,unknown>;
 async function events(org:string,type:string){return await db.auditEvent.findMany({where:{organizationId:org,resourceType:type},orderBy:{occurredAt:"desc"},take:5000}) as Event[];}
 function current(es:Event[]){const m=new Map<string,Event>();for(const e of es){const id=e.resourceId??e.id;if(!m.has(id))m.set(id,e);}return [...m.values()].filter(e=>!e.action.endsWith("_DELETED"));}
 export async function GET(){const user=await requirePermission("staff.manage");const [te,pe]=await Promise.all([events(user.organizationId,"TREATMENT"),events(user.organizationId,"TREATMENT_PACKAGE")]);const treatments=current(te).map(e=>({id:e.resourceId??e.id,...getData(e)}));const ids=new Set(treatments.map(t=>t.id));const packages=current(pe).map(e=>({id:e.resourceId??e.id,...getData(e)})).filter(p=>typeof p.treatmentId==="string"&&ids.has(p.treatmentId));return NextResponse.json({treatments,packages});}

@@ -103,7 +103,7 @@ async function catalog(org: string) {
 
 function serializeBill(e: Event) {
   const d = data(e);
-  return { id: e.resourceId ?? e.id, ...d, createdAt: e.occurredAt.toISOString() };
+  return { id: e.resourceId ?? e.id, ...d, createdAt: e.occurredAt.toISOString(), actorUserId: e.actorUserId };
 }
 
 export async function GET(request: Request) {
@@ -213,6 +213,7 @@ export async function POST(request: Request) {
 
   const metadata = {
     financialYear: fy,
+    createdByUserId: user.id,
     billNumber, billDate: indiaDate(), patientId: p.id, patientNumber: p.patientNumber, patientName: p.name, mobile: p.mobile, city: p.city,
     lineItems: calculatedItems, subtotal, billDiscount, taxableAmount, taxRate: parsed.data.taxRate, taxAmount, grandTotal,
     amountPaid: initialPayment, balanceDue, paymentStatus, payments: initialPayments, notes: parsed.data.notes ?? ""

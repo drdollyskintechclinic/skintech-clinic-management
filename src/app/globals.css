@@ -85,6 +85,25 @@ h2 { margin-top: 0; }
 .row-actions { display: flex; gap: .05rem; align-items: center; white-space: nowrap; }
 .row-actions .text-button, .row-actions .danger-button { padding-left: .2rem; padding-right: .2rem; font-size: .75rem; }
 
+
+.followup-summary { display:flex; flex-wrap:wrap; gap:.5rem; margin:0 0 1rem; }
+.followup-summary button { border:1px solid var(--line); background:white; color:var(--ink); border-radius:999px; padding:.45rem .75rem; font-weight:700; cursor:pointer; }
+.followup-summary button strong { margin-left:.25rem; font-size:.78rem; color:var(--muted); }
+.followup-summary button.active { background:#e8f4f0; border-color:#9fcfc4; color:var(--brand-dark); }
+.followup-summary button.active strong { color:var(--brand); }
+.followup-row.followup-overdue { background:#fff7f7; }
+.followup-row.followup-due-today { background:#fffdf2; }
+.followup-row.followup-completed { background:#f4fbf7; }
+.followup-row.followup-cancelled { background:#f7f7f7; opacity:.82; }
+.followup-row .followup-state { display:block; margin-top:.18rem; font-size:.7rem; font-weight:700; color:var(--muted); }
+.followup-row .followup-status { display:inline-block; border-radius:999px; padding:.2rem .5rem; font-size:.7rem; font-weight:800; }
+.followup-row .status-overdue { color:#991b1b; background:#fee2e2; }
+.followup-row .status-due-today { color:#92400e; background:#fef3c7; }
+.followup-row .status-upcoming { color:#166534; background:#dcfce7; }
+.followup-row .status-completed { color:#166534; background:#dcfce7; }
+.followup-row .status-cancelled { color:#525252; background:#e5e5e5; }
+.followup-row .action-buttons { flex-wrap:wrap; }
+.followup-row .action-buttons .success-text { color:#166534; }
 .followup-row { grid-template-columns: minmax(150px,1.35fr) 105px minmax(130px,1.25fr) 135px 90px 225px; gap: .55rem; }
 .followup-row.lead-head { background: #e8f4f0; color: var(--ink); font-weight: 700; border-bottom: 2px solid #b9dcd3; border-radius: .35rem .35rem 0 0; }
 .followup-row.lead-head > span { font-weight: 700; }

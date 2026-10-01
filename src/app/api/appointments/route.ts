@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 
 const statuses = ["SCHEDULED", "CONFIRMED", "CHECKED_IN", "IN_CONSULTATION", "COMPLETED", "CANCELLED", "NO_SHOW"] as const;
 const appointmentSchema = z.object({
-  patientId: z.string().uuid(),
+  patientId: z.string().uuid().optional(),
+  leadId: z.string().uuid().optional(),
   doctorUserId: z.string().uuid(),
   appointmentDate: z.string().date(),
   appointmentTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid appointment time."),
@@ -24,7 +25,7 @@ type AppointmentEvent = { id: string; occurredAt: Date; actorUserId: string | nu
 
 function serialize(event: AppointmentEvent) {
   const data = (event.metadata ?? {}) as AppointmentData & {
-    appointmentNumber?: string; status?: string; followUpId?: string; patientName?: string; patientNumber?: string; mobile?: string; doctorName?: string;
+    appointmentNumber?: string; status?: string; followUpId?: string; leadId?: string; patientName?: string; patientNumber?: string; mobile?: string; doctorName?: string;
   };
   return {
     id: event.resourceId ?? event.id,
@@ -42,7 +43,8 @@ function serialize(event: AppointmentEvent) {
     treatment: data.treatment ?? "",
     notes: data.notes ?? "",
     status: data.status ?? "SCHEDULED",
-    followUpId: data.followUpId
+    followUpId: data.followUpId,
+    leadId: data.leadId
   };
 }
 
@@ -86,6 +88,58 @@ async function patientForAppointment(organizationId: string, patientId: string) 
   if (!event || event.action === "PATIENT_DELETED") return null;
   const data = (event.metadata ?? {}) as { patientNumber?: string; name?: string; mobile?: string };
   return { patientNumber: data.patientNumber ?? "", name: data.name ?? "", mobile: data.mobile ?? "" };
+}
+
+async function leadForAppointment(organizationId: string, leadId: string) {
+  const events = await db.auditEvent.findMany({ where: { organizationId, resourceType: "LEAD", resourceId: leadId }, orderBy: { occurredAt: "desc" }, take: 1 });
+  const event = events[0] as LeadEvent | undefined;
+  if (!event || event.action === "LEAD_DELETED") return null;
+  return { id: leadId, ...((event.metadata ?? {}) as Record<string, unknown>) };
+}
+
+async function existingPatientByMobile(organizationId: string, mobile: string) {
+  const normalized = mobile.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+  if (!normalized) return null;
+  const events = await db.auditEvent.findMany({ where: { organizationId, resourceType: "PATIENT" }, orderBy: { occurredAt: "desc" }, take: 5000 });
+  const latest = new Map<string, any>();
+  for (const event of events) { const id = event.resourceId ?? event.id; if (!latest.has(id)) latest.set(id, event); }
+  for (const event of latest.values()) {
+    if (event.action === "PATIENT_DELETED") continue;
+    const data = (event.metadata ?? {}) as { mobile?: string; patientNumber?: string; name?: string };
+    const value = String(data.mobile ?? "").replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+    if (value === normalized) return { id: event.resourceId ?? event.id, patientNumber: data.patientNumber ?? "", name: data.name ?? "", mobile: data.mobile ?? normalized };
+  }
+  return null;
+}
+
+async function createPatientFromLead(user: { id: string; organizationId: string }, lead: Record<string, unknown>) {
+  const normalized = String(lead.mobile ?? "").replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+  if (normalized.length !== 10) throw new Error("The enquiry mobile number is not a valid 10-digit number.");
+  const existing = await existingPatientByMobile(user.organizationId, normalized);
+  if (existing) return existing;
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit" }).formatToParts(new Date());
+  const year = parts.find((p) => p.type === "year")?.value ?? "";
+  const month = parts.find((p) => p.type === "month")?.value ?? "";
+  const prefix = `SC${year.slice(-2)}${month}`;
+  const patientEvents = await db.auditEvent.findMany({ where: { organizationId: user.organizationId, resourceType: "PATIENT", action: "PATIENT_CREATED" }, select: { metadata: true }, take: 5000 });
+  let max = 0;
+  for (const event of patientEvents) {
+    const number = String(((event.metadata ?? {}) as { patientNumber?: unknown }).patientNumber ?? "");
+    if (number.startsWith(prefix)) max = Math.max(max, Number(number.slice(prefix.length)) || 0);
+  }
+  const patientNumber = `${prefix}${String(max + 1).padStart(4, "0")}`;
+  const patientId = crypto.randomUUID();
+  await db.auditEvent.create({ data: { organizationId: user.organizationId, actorUserId: user.id, resourceId: patientId, action: "PATIENT_CREATED", resourceType: "PATIENT", metadata: {
+    name: String(lead.name ?? ""), mobile: normalized, email: String(lead.email ?? ""), dateOfBirth: "", gender: "", address: "", city: "", referredBy: "Lead / Enquiry", alternateContactNumber: "", notes: String(lead.notes ?? ""), patientNumber
+  } } });
+  return { id: patientId, patientNumber, name: String(lead.name ?? ""), mobile: normalized };
+}
+
+async function markLeadAppointmentBooked(user: { id: string; organizationId: string }, leadId: string, patientId: string) {
+  const events = await db.auditEvent.findMany({ where: { organizationId: user.organizationId, resourceType: "LEAD", resourceId: leadId }, orderBy: { occurredAt: "desc" }, take: 1 });
+  const event = events[0];
+  if (!event || event.action === "LEAD_DELETED") return;
+  await db.auditEvent.create({ data: { organizationId: user.organizationId, actorUserId: user.id, resourceId: leadId, action: "LEAD_APPOINTMENT_BOOKED", resourceType: "LEAD", metadata: { ...((event.metadata ?? {}) as Record<string, unknown>), status: "APPOINTMENT_BOOKED", patientId } } });
 }
 
 async function doctorName(organizationId: string, doctorUserId: string, clinicLocationId: string | null) {
@@ -173,8 +227,22 @@ export async function POST(request: Request) {
   const parsed = appointmentSchema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "Please check the appointment details." }, { status: 400 });
 
-  const patient = await patientForAppointment(user.organizationId, parsed.data.patientId);
+  let patientId = parsed.data.patientId;
+  if (parsed.data.leadId) {
+    const lead = await leadForAppointment(user.organizationId, parsed.data.leadId);
+    if (!lead) return NextResponse.json({ error: "Enquiry not found." }, { status: 404 });
+    const leadPatient = await createPatientFromLead(user, lead);
+    patientId = leadPatient.id;
+  }
+  if (!patientId) return NextResponse.json({ error: "Please select a patient or book from an enquiry." }, { status: 400 });
+  const patient = await patientForAppointment(user.organizationId, patientId);
   if (!patient) return NextResponse.json({ error: "Patient not found." }, { status: 404 });
+
+  if (parsed.data.leadId) {
+    const existingLeadAppointments = await currentAppointments(user.organizationId);
+    const linked = existingLeadAppointments.find((appointment) => appointment.leadId === parsed.data.leadId && !["CANCELLED", "NO_SHOW"].includes(appointment.status));
+    if (linked) return NextResponse.json({ error: `This enquiry already has appointment ${linked.appointmentNumber}.`, appointment: linked }, { status: 409 });
+  }
 
   if (parsed.data.followUpId) {
     const existingFollowUpAppointments = await currentAppointments(user.organizationId);
@@ -204,6 +272,7 @@ export async function POST(request: Request) {
 
   const metadata = {
     ...parsed.data,
+    patientId,
     appointmentNumber,
     patientNumber: patient.patientNumber,
     patientName: patient.name,
@@ -213,6 +282,7 @@ export async function POST(request: Request) {
   };
 
   const event = await saveAppointmentEvent(user, appointmentId, "APPOINTMENT_CREATED", metadata);
+  if (parsed.data.leadId) await markLeadAppointmentBooked(user, parsed.data.leadId, patientId);
   return NextResponse.json({ appointment: serialize(event as AppointmentEvent) }, { status: 201 });
 }
 
@@ -253,7 +323,8 @@ export async function PATCH(request: Request) {
   const parsed = appointmentSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Please check the appointment details." }, { status: 400 });
 
-  const patient = await patientForAppointment(user.organizationId, parsed.data.patientId);
+  const patientId = parsed.data.patientId ?? existing.patientId;
+  const patient = await patientForAppointment(user.organizationId, patientId);
   if (!patient) return NextResponse.json({ error: "Patient not found." }, { status: 404 });
 
   const selectedDoctorName = await doctorName(user.organizationId, parsed.data.doctorUserId, user.clinicLocationId ?? null);
@@ -270,13 +341,15 @@ export async function PATCH(request: Request) {
 
   const metadata = {
     ...parsed.data,
+    patientId,
     appointmentNumber: existing.appointmentNumber,
     patientNumber: patient.patientNumber,
     patientName: patient.name,
     mobile: patient.mobile,
     doctorName: selectedDoctorName,
     status: parsed.data.status ?? existing.status,
-    followUpId: parsed.data.followUpId ?? existing.followUpId
+    followUpId: parsed.data.followUpId ?? existing.followUpId,
+    leadId: parsed.data.leadId ?? existing.leadId
   };
 
   const event = await saveAppointmentEvent(user, existing.id, "APPOINTMENT_UPDATED", metadata);

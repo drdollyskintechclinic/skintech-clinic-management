@@ -8,7 +8,7 @@ type Duplicate = { id: string; name: string; mobile: string; interestedTreatment
 const sources = ["Instagram", "Facebook", "WhatsApp", "Google", "Walk-in", "Referral", "Other"];
 const statuses = ["NEW", "CONTACTED", "FOLLOW_UP", "APPOINTMENT_BOOKED", "VISITED", "CONVERTED", "LOST"];
 const statusLabels: Record<string, string> = { NEW: "New", CONTACTED: "Contacted", FOLLOW_UP: "Follow-up", APPOINTMENT_BOOKED: "Appointment booked", VISITED: "Visited", CONVERTED: "Converted", LOST: "Lost" };
-const pageSize = 10;
+const pageSize = 20;
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]), [owners, setOwners] = useState<Owner[]>([]), [query, setQuery] = useState(""), [page, setPage] = useState(1), [total, setTotal] = useState(0);

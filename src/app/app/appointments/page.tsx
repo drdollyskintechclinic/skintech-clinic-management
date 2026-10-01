@@ -161,7 +161,9 @@ export default function AppointmentsPage() {
     void loadUpcomingCount();
   }, []);
 
-  const appointmentPageSize = 20; const [appointmentPage,setAppointmentPage]=useState(1); const sortedAppointments=useMemo(()=>appointments.slice().sort((a,b)=>a.appointmentTime.localeCompare(b.appointmentTime)),[appointments]); const appointmentTotalPages=Math.max(1,Math.ceil(sortedAppointments.length/appointmentPageSize)); const safeAppointmentPage=Math.min(appointmentPage,appointmentTotalPages); const pagedAppointments=sortedAppointments.slice((safeAppointmentPage-1)*appointmentPageSize,safeAppointmentPage*appointmentPageSize);\n\n  const counts = useMemo(() => ({
+  const appointmentPageSize = 20; const [appointmentPage,setAppointmentPage]=useState(1); const sortedAppointments=useMemo(()=>appointments.slice().sort((a,b)=>a.appointmentTime.localeCompare(b.appointmentTime)),[appointments]); const appointmentTotalPages=Math.max(1,Math.ceil(sortedAppointments.length/appointmentPageSize)); const safeAppointmentPage=Math.min(appointmentPage,appointmentTotalPages); const pagedAppointments=sortedAppointments.slice((safeAppointmentPage-1)*appointmentPageSize,safeAppointmentPage*appointmentPageSize);
+
+  const counts = useMemo(() => ({
     today: appointments.length,
     waiting: appointments.filter((item) => item.status === "CHECKED_IN").length
   }), [appointments]);

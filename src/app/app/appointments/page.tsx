@@ -266,13 +266,13 @@ export default function AppointmentsPage() {
           <label>Time<select name="appointmentTime" required defaultValue={editing?.appointmentTime ?? ""}><option value="" disabled>Select time</option>{timeSlots.map((time) => <option key={time} value={time}>{formatTime(time)}</option>)}</select></label>
         </div>
         <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? (bookingFromFollowUp ? "Follow-up" : "Consultation")}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
-        <label>Treatment / purpose <span className="optional">optional</span>
+        <label>Treatment / purpose <span className="field-asterisk" aria-hidden="true">*</span>
           <select name="treatment" value={selectedTreatment} onChange={(event) => setSelectedTreatment(event.target.value)}>
             <option value="">Select procedure</option>
             {treatmentOptions.map((treatment) => <option key={treatment} value={treatment}>{treatment}</option>)}
           </select>
         </label>
-        <label className="full">Notes <span className="optional">optional</span><textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Additional appointment notes..." /></label>
+        <label className="full">Notes <span className="field-asterisk" aria-hidden="true">*</span><textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Additional appointment notes..." /></label>
         {editing && <label>Status<select name="status" defaultValue={editing.status}>{Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
         <div className="form-actions full"><button className="button" disabled={saving}>{saving ? "Saving..." : editing ? "Save changes" : "Create appointment"}</button><button className="secondary-button" type="button" onClick={closeForm}>Cancel</button></div>
       </form>

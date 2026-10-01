@@ -7,7 +7,7 @@ type Duplicate = { id: string; patientNumber: string; name: string; mobile: stri
 
 const genders = ["", "FEMALE", "MALE", "OTHER", "PREFER_NOT_TO_SAY"];
 const genderLabels: Record<string, string> = { "": "Select", FEMALE: "Female", MALE: "Male", OTHER: "Other", PREFER_NOT_TO_SAY: "Prefer not to say" };
-const pageSize = 10;
+const pageSize = 20;
 
 function calculateAge(dateOfBirth?: string) {
   if (!dateOfBirth) return "—";

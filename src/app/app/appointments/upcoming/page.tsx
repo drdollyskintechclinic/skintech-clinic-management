@@ -40,7 +40,7 @@ export default function UpcomingAppointmentsPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const response = await fetch(`/api/appointments?upcoming=true&page=${page}&pageSize=10`, { cache: "no-store" });
+      const response = await fetch(`/api/appointments?upcoming=true&page=${page}&pageSize=20`, { cache: "no-store" });
       if (response.ok) {
         const data = await response.json();
         setAppointments(data.upcomingAppointments);
@@ -59,7 +59,7 @@ export default function UpcomingAppointmentsPage() {
     const response = await fetch("/api/appointments", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ appointmentId: appointment.id }) });
     const result = await response.json();
     if (!response.ok) { setError(result.error ?? "Unable to delete appointment."); return; }
-    const refreshed = await fetch(`/api/appointments?upcoming=true&page=${page}&pageSize=10`, { cache: "no-store" });
+    const refreshed = await fetch(`/api/appointments?upcoming=true&page=${page}&pageSize=20`, { cache: "no-store" });
     if (refreshed.ok) {
       const data = await refreshed.json();
       setAppointments(data.upcomingAppointments);

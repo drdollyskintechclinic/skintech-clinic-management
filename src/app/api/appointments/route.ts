@@ -176,6 +176,12 @@ export async function POST(request: Request) {
   const patient = await patientForAppointment(user.organizationId, parsed.data.patientId);
   if (!patient) return NextResponse.json({ error: "Patient not found." }, { status: 404 });
 
+  if (parsed.data.followUpId) {
+    const existingFollowUpAppointments = await currentAppointments(user.organizationId);
+    const linked = existingFollowUpAppointments.find((appointment) => appointment.followUpId === parsed.data.followUpId && !["CANCELLED", "NO_SHOW"].includes(appointment.status));
+    if (linked) return NextResponse.json({ error: `This follow-up already has appointment ${linked.appointmentNumber}.`, appointment: linked }, { status: 409 });
+  }
+
   const selectedDoctorName = await doctorName(user.organizationId, parsed.data.doctorUserId, user.clinicLocationId ?? null);
   if (!selectedDoctorName) return NextResponse.json({ error: "Selected doctor is not available for this clinic." }, { status: 400 });
 

@@ -69,8 +69,11 @@ h2 { margin-top: 0; }
 .lead-row > :nth-child(1), .lead-row > :nth-child(2) { position: sticky; z-index: 2; background: var(--surface); }
 .lead-row > :nth-child(1) { left: 0; }
 .lead-row > :nth-child(2) { left: 130px; box-shadow: 4px 0 6px -6px rgba(23,48,45,.3); }
-.lead-head > :nth-child(1), .lead-head > :nth-child(2) { background: var(--surface); z-index: 3; }
+.lead-head > :nth-child(1), .lead-head > :nth-child(2) { background: #e8f4f0 !important; z-index: 3; }
+.lead-head { background: #e8f4f0; color: var(--ink); font-weight: 700; border-bottom: 2px solid #b9dcd3; }
+.lead-head > span { font-weight: 700; }
 .lead-head > :first-child { white-space: nowrap; }
+.lead-row:not(.lead-head):hover { background: #fbfdfc; }
 .treatment-cell { min-width: 0; overflow-wrap: anywhere; }
 .notes-cell { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; color: var(--muted); }
 .lead-row select { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: .4rem; padding: .4rem .3rem; background: white; color: var(--ink); font-size: .75rem; }

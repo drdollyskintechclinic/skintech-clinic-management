@@ -101,7 +101,12 @@ function prepareData(data: PatientData) {
 export async function GET(request: Request) {
   const user = await requirePermission("reception.manage");
   const params = new URL(request.url).searchParams;
+  const requestedId = params.get("id")?.trim() ?? "";
   const query = params.get("q")?.trim().toLowerCase() ?? "";
+  if (requestedId) {
+    const patient = await findPatient(user.organizationId, requestedId);
+    return NextResponse.json({ patients: patient ? [patient] : [], pagination: { page: 1, pageSize: 1, total: patient ? 1 : 0, totalPages: 1 } });
+  }
   const page = Math.max(1, Number(params.get("page") ?? "1") || 1);
   const pageSize = Math.min(50, Math.max(5, Number(params.get("pageSize") ?? "10") || 10));
   const allPatients = (await currentPatients(user.organizationId)).filter((patient) => !query || patient.name.toLowerCase().includes(query) || patient.mobile.toLowerCase().includes(query) || patient.patientNumber.toLowerCase().includes(query));

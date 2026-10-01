@@ -68,14 +68,14 @@ export default function LeadsPage() {
     {error && <p className="error">{error}</p>}
     {open && <div className="clinic-modal-backdrop" role="dialog" aria-modal="true" aria-label={editing ? "Edit enquiry" : "New enquiry"}><div className="card form-card clinic-modal"><div className="form-header"><div><h2>{editing ? "Edit enquiry" : "New enquiry"}</h2><p className="muted">{editing ? "Update the enquiry details." : "Record the lead while the enquiry is fresh."}</p></div><button className="text-button" type="button" onClick={() => { setOpen(false); setEditing(null); }}>Close</button></div>
       <form className="lead-form" onSubmit={submit}>
-        <label>Name<input name="name" required defaultValue={editing?.name ?? ""} placeholder="Patient / enquiry name" /></label>
-        <label>Mobile<input name="mobile" required defaultValue={editing?.mobile ?? ""} placeholder="10-digit mobile number" inputMode="tel" /></label>
-        <label><span className="field-label-text">Email<span className="field-asterisk" aria-hidden="true">*</span></span><input name="email" type="email" defaultValue={editing?.email ?? ""} placeholder="name@example.com" /></label>
+        <label><span className="field-label-text">Name<span className="field-asterisk" aria-hidden="true">*</span></span><input name="name" required defaultValue={editing?.name ?? ""} placeholder="Patient / enquiry name" /></label>
+        <label><span className="field-label-text">Mobile<span className="field-asterisk" aria-hidden="true">*</span></span><input name="mobile" required defaultValue={editing?.mobile ?? ""} placeholder="10-digit mobile number" inputMode="tel" /></label>
+        <label>Email<input name="email" type="email" defaultValue={editing?.email ?? ""} placeholder="name@example.com" /></label>
         <label>Source<select name="source" defaultValue={editing?.source ?? "Instagram"}>{sources.map((source) => <option key={source}>{source}</option>)}</select></label>
-        <label>Interested treatment<input name="interestedTreatment" required defaultValue={editing?.interestedTreatment ?? ""} placeholder="e.g. Hydrafacial, PRP, Laser Hair Reduction" /></label>
+        <label><span className="field-label-text">Interested treatment<span className="field-asterisk" aria-hidden="true">*</span></span><input name="interestedTreatment" required defaultValue={editing?.interestedTreatment ?? ""} placeholder="e.g. Hydrafacial, PRP, Laser Hair Reduction" /></label>
         <label>Owner<select name="ownerUserId" defaultValue={editing?.ownerUserId ?? ""}><option value="">Unassigned</option>{owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name || owner.email}</option>)}</select></label>
-        <label><span className="field-label-text">Next follow-up<span className="field-asterisk" aria-hidden="true">*</span></span><input name="followUpAt" type="datetime-local" defaultValue={editing?.followUpAt ? new Date(editing.followUpAt).toISOString().slice(0,16) : ""} /></label>
-        <label className="full"><span className="field-label-text">Notes<span className="field-asterisk" aria-hidden="true">*</span></span><textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Enquiry details, concerns, preferred timing..." /></label>
+        <label>Next follow-up<input name="followUpAt" type="datetime-local" defaultValue={editing?.followUpAt ? new Date(editing.followUpAt).toISOString().slice(0,16) : ""} /></label>
+        <label className="full">Notes<textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Enquiry details, concerns, preferred timing..." /></label>
         <div className="form-actions full"><button className="button" disabled={saving}>{saving ? "Saving..." : editing ? "Update enquiry" : "Save enquiry"}</button><button className="secondary-button" type="button" onClick={() => { setOpen(false); setEditing(null); }}>Cancel</button></div>
       </form>
     </div></div>}

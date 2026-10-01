@@ -70,12 +70,12 @@ export default function LeadsPage() {
       <form className="lead-form" onSubmit={submit}>
         <label>Name<input name="name" required defaultValue={editing?.name ?? ""} placeholder="Patient / enquiry name" /></label>
         <label>Mobile<input name="mobile" required defaultValue={editing?.mobile ?? ""} placeholder="10-digit mobile number" inputMode="tel" /></label>
-        <label>Email <span className="optional">optional</span><input name="email" type="email" defaultValue={editing?.email ?? ""} placeholder="name@example.com" /></label>
+        <label>Email <span className="field-asterisk" aria-hidden="true">*</span><input name="email" type="email" defaultValue={editing?.email ?? ""} placeholder="name@example.com" /></label>
         <label>Source<select name="source" defaultValue={editing?.source ?? "Instagram"}>{sources.map((source) => <option key={source}>{source}</option>)}</select></label>
         <label>Interested treatment<input name="interestedTreatment" required defaultValue={editing?.interestedTreatment ?? ""} placeholder="e.g. Hydrafacial, PRP, Laser Hair Reduction" /></label>
         <label>Owner<select name="ownerUserId" defaultValue={editing?.ownerUserId ?? ""}><option value="">Unassigned</option>{owners.map((owner) => <option key={owner.id} value={owner.id}>{owner.name || owner.email}</option>)}</select></label>
-        <label>Next follow-up <span className="optional">optional</span><input name="followUpAt" type="datetime-local" defaultValue={editing?.followUpAt ? new Date(editing.followUpAt).toISOString().slice(0,16) : ""} /></label>
-        <label className="full">Notes <span className="optional">optional</span><textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Enquiry details, concerns, preferred timing..." /></label>
+        <label>Next follow-up <span className="field-asterisk" aria-hidden="true">*</span><input name="followUpAt" type="datetime-local" defaultValue={editing?.followUpAt ? new Date(editing.followUpAt).toISOString().slice(0,16) : ""} /></label>
+        <label className="full">Notes <span className="field-asterisk" aria-hidden="true">*</span><textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Enquiry details, concerns, preferred timing..." /></label>
         <div className="form-actions full"><button className="button" disabled={saving}>{saving ? "Saving..." : editing ? "Update enquiry" : "Save enquiry"}</button><button className="secondary-button" type="button" onClick={() => { setOpen(false); setEditing(null); }}>Cancel</button></div>
       </form>
     </div></div>}

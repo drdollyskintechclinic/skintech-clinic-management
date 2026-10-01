@@ -251,7 +251,7 @@ export default function AppointmentsPage() {
     </div>
     {error && <p className="error">{error}</p>}
 
-    {open && <div className="card form-card">
+    <div className="clinic-modal-backdrop" role="dialog" aria-modal="true" aria-label={editing ? "Edit appointment" : "New appointment"}><div className="card form-card clinic-modal">{open && <>
       <div className="form-header"><div><h2>{editing ? "Edit appointment" : "New appointment"}</h2><p className="muted">{editing ? `Appointment ${editing.appointmentNumber}` : "Search the existing patient and select a database-managed doctor."}</p></div><button className="text-button" type="button" onClick={closeForm}>Close</button></div>
       <form className="lead-form" onSubmit={submit}>
         <label className="full">Patient
@@ -276,7 +276,8 @@ export default function AppointmentsPage() {
         {editing && <label>Status<select name="status" defaultValue={editing.status}>{Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
         <div className="form-actions full"><button className="button" disabled={saving}>{saving ? "Saving..." : editing ? "Save changes" : "Create appointment"}</button><button className="secondary-button" type="button" onClick={closeForm}>Cancel</button></div>
       </form>
-    </div>}
+    </div></>}
+    </div>
 
     <div className="stats">
       <section className="card"><span>Today</span><strong>{counts.today}</strong><small>appointments</small></section>

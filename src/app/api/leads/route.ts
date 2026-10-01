@@ -20,7 +20,7 @@ const leadSchema = z.object({
   ownerUserId: z.string().uuid().optional().or(z.literal(""))
 });
 
-type LeadData = z.infer<typeof leadSchema> & { status?: string; followUpAt?: string | null };
+type LeadData = z.infer<typeof leadSchema> & { status?: string; followUpAt?: string | null; patientId?: string };
 type LeadEvent = { id: string; occurredAt: Date; actorUserId: string | null; resourceId: string | null; action: string; metadata: unknown };
 
 function normalizeMobile(value: string) {
@@ -61,7 +61,12 @@ async function findLeadEvent(organizationId: string, leadId: string) {
 export async function GET(request: Request) {
   const user = await requirePermission("reception.manage");
   const params = new URL(request.url).searchParams;
+  const requestedId = params.get("id")?.trim() ?? "";
   const query = params.get("q")?.trim().toLowerCase() ?? "";
+  if (requestedId) {
+    const found = await findLeadEvent(user.organizationId, requestedId);
+    return NextResponse.json({ leads: found ? [found.lead] : [] });
+  }
   const page = Math.max(1, Number(params.get("page") ?? "1") || 1);
   const pageSize = Math.min(50, Math.max(5, Number(params.get("pageSize") ?? "10") || 10));
   const allLeads = (await currentLeads(user.organizationId)).filter((lead) => !query || lead.name.toLowerCase().includes(query) || lead.mobile.toLowerCase().includes(query));

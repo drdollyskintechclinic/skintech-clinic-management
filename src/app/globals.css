@@ -79,8 +79,9 @@ h2 { margin-top: 0; }
 .row-actions .text-button, .row-actions .danger-button { padding-left: .2rem; padding-right: .2rem; font-size: .75rem; }
 
 .followup-row { grid-template-columns: minmax(150px,1.35fr) 105px minmax(130px,1.25fr) 135px 90px 225px; gap: .55rem; }
-.followup-row.lead-head { background: #e8f4f0; color: var(--ink); font-weight: 800; border-bottom: 2px solid #b9dcd3; border-radius: .35rem .35rem 0 0; }
-.followup-row.lead-head > span { font-weight: 800; }
+.followup-row.lead-head { background: #e8f4f0; color: var(--ink); font-weight: 700; border-bottom: 2px solid #b9dcd3; border-radius: .35rem .35rem 0 0; }
+.followup-row.lead-head > span { font-weight: 700; }
+.followup-row.lead-head > :nth-child(1), .followup-row.lead-head > :nth-child(2) { background: #e8f4f0 !important; }
 .followup-row > :nth-child(1), .followup-row > :nth-child(2) { position: static; }
 .followup-row .action-buttons { display: flex; align-items: center; justify-content: flex-start; gap: .55rem; white-space: nowrap; min-width: 0; }
 .followup-row .action-buttons .text-button { padding: .2rem 0; font-size: .75rem; white-space: nowrap; }
@@ -231,6 +232,13 @@ h2 { margin-top: 0; }
 @media(max-width:700px){.bill-modal-backdrop{padding:.5rem}.bill-modal{max-height:calc(100vh - 1rem)}.bill-modal-header{padding:1rem}.bill-form{padding:1rem}.bill-two-col,.bill-summary-section{grid-template-columns:1fr}.bill-item-row{grid-template-columns:1fr 70px 105px 105px auto}.bill-item-name{grid-column:1/-1}.bill-form-footer{justify-content:stretch}.bill-form-footer button{flex:1}.bill-patient-selected{align-items:flex-start;flex-direction:column}}
 
 
+.followups-page { margin-top: -1.15rem; }
+.followups-page .eyebrow { margin-bottom: .25rem; }
+.followups-page .page-header { margin-bottom: .85rem; }
+.followups-page .page-header h1 { margin-bottom: .25rem; }
+.followups-page .lead { margin: 0; line-height: 1.4; }
+.followups-page .followup-filters { margin: .85rem 0 1rem; }
+.followups-page .lead-list { background: var(--surface); }
 .followup-filters { display: flex; align-items: flex-end; gap: .75rem; flex-wrap: wrap; }
 .followup-date-filter { display: grid; gap: .35rem; font-size: .78rem; font-weight: 700; color: var(--ink); }
 .followup-date-filter input { border: 1px solid var(--line); border-radius: .45rem; padding: .7rem .8rem; background: white; color: var(--ink); }

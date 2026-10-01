@@ -157,8 +157,19 @@ export default function AppointmentsPage() {
       const data = await response.json();
       const lead = data.leads?.[0];
       if (!lead || cancelled) return;
-      setEditing(null); setBookingFromLead(true); setBookingFromFollowUp(false); setBookingFromLead(false); setLeadName(""); setLeadName(lead.name);
-      setPatientQuery(""); setPatientResults([]); setSelectedPatient(null);
+      const convertResponse = await fetch("/api/leads", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "convertToPatient", leadId: lead.id })
+      });
+      const convertResult = await convertResponse.json();
+      if (!convertResponse.ok || !convertResult.patient || cancelled) {
+        if (!cancelled) setError(convertResult.error ?? "Unable to prepare the patient record from this enquiry.");
+        return;
+      }
+      const convertedPatient = convertResult.patient as Patient;
+      setEditing(null); setBookingFromLead(true); setBookingFromFollowUp(false); setLeadName(lead.name);
+      setPatientQuery(""); setPatientResults([]); setSelectedPatient(convertedPatient);
       setSelectedTreatment(lead.interestedTreatment || ""); setTreatmentQuery(""); setTreatmentOpen(false); setError(""); setOpen(true);
     }
     void prepareLeadBooking();

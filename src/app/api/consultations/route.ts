@@ -100,5 +100,51 @@ export async function POST(request: Request) {
       metadata
     }
   });
+
+  // Keep the Follow-ups module synchronized with the consultation.
+  // Saving a follow-up date automatically creates/updates one pending follow-up
+  // for this consultation, while clearing the date does not create a new one.
+  if (parsed.data.followUpDate) {
+    const followUpEvents = await db.auditEvent.findMany({
+      where: {
+        organizationId: user.organizationId,
+        resourceType: "FOLLOW_UP",
+        metadata: { path: ["sourceConsultationAppointmentId"], equals: parsed.data.appointmentId }
+      },
+      orderBy: { occurredAt: "desc" },
+      take: 50
+    });
+
+    const latest = followUpEvents.find((item) => item.action !== "FOLLOW_UP_DELETED");
+    const existingFollowUp = latest ? (latest.metadata as Record<string, unknown>) : null;
+    const followUpId = latest?.resourceId ?? crypto.randomUUID();
+
+    await db.auditEvent.create({
+      data: {
+        organizationId: user.organizationId,
+        actorUserId: user.id,
+        resourceType: "FOLLOW_UP",
+        resourceId: followUpId,
+        action: latest ? "FOLLOW_UP_UPDATED" : "FOLLOW_UP_CREATED",
+        metadata: {
+          ...(existingFollowUp ?? {}),
+          patientId: appointment.patientId,
+          patientNumber: appointment.patientNumber,
+          patientName: appointment.patientName,
+          mobile: appointment.mobile,
+          dueDate: parsed.data.followUpDate,
+          purpose: "Consultation follow-up",
+          assignedUserId: appointment.doctorUserId,
+          assignedUserName: appointment.doctorName,
+          notes: parsed.data.doctorNotes ?? "",
+          status: "PENDING",
+          sourceConsultationAppointmentId: parsed.data.appointmentId,
+          createdByUserId: user.id,
+          createdByUserName: user.name ?? ""
+        }
+      }
+    });
+  }
+
   return NextResponse.json({ consultation: { id: event.id, ...metadata } }, { status: existing ? 200 : 201 });
 }

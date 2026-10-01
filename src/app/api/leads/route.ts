@@ -97,6 +97,61 @@ export async function POST(request: Request) {
   return NextResponse.json({ lead: serialize(lead as LeadEvent) }, { status: 201 });
 }
 
+async function currentPatientByMobile(organizationId: string, mobile: string) {
+  const normalized = mobile.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+  const events = await db.auditEvent.findMany({ where: { organizationId, resourceType: "PATIENT" }, orderBy: { occurredAt: "desc" }, take: 5000 });
+  const latest = new Map<string, any>();
+  for (const event of events) {
+    const id = event.resourceId ?? event.id;
+    if (!latest.has(id)) latest.set(id, event);
+  }
+  for (const event of latest.values()) {
+    if (event.action === "PATIENT_DELETED") continue;
+    const data = (event.metadata ?? {}) as { mobile?: string; patientNumber?: string; name?: string };
+    const value = String(data.mobile ?? "").replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
+    if (value === normalized) return { id: event.resourceId ?? event.id, patientNumber: data.patientNumber ?? "", name: data.name ?? "", mobile: data.mobile ?? normalized };
+  }
+  return null;
+}
+
+async function convertLeadToPatient(user: { id: string; organizationId: string }, lead: LeadData) {
+  if (lead.patientId) {
+    const existing = await db.auditEvent.findMany({ where: { organizationId: user.organizationId, resourceType: "PATIENT", resourceId: lead.patientId }, orderBy: { occurredAt: "desc" }, take: 1 });
+    if (existing[0] && existing[0].action !== "PATIENT_DELETED") {
+      const data = (existing[0].metadata ?? {}) as { patientNumber?: string; name?: string; mobile?: string };
+      return { id: lead.patientId, patientNumber: data.patientNumber ?? "", name: data.name ?? "", mobile: data.mobile ?? "" };
+    }
+  }
+  const normalizedMobile = normalizeMobile(lead.mobile);
+  if (normalizedMobile.length !== 10) throw new Error("The enquiry mobile number is not a valid 10-digit number.");
+  const existing = await currentPatientByMobile(user.organizationId, normalizedMobile);
+  if (existing) return existing;
+
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit" }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value ?? "";
+  const month = parts.find((part) => part.type === "month")?.value ?? "";
+  const prefix = `SC${year.slice(-2)}${month}`;
+  const patientEvents = await db.auditEvent.findMany({ where: { organizationId: user.organizationId, resourceType: "PATIENT", action: "PATIENT_CREATED" }, select: { metadata: true }, take: 5000 });
+  let max = 0;
+  for (const event of patientEvents) {
+    const number = String(((event.metadata ?? {}) as { patientNumber?: unknown }).patientNumber ?? "");
+    if (number.startsWith(prefix)) max = Math.max(max, Number(number.slice(prefix.length)) || 0);
+  }
+  const patientNumber = `${prefix}${String(max + 1).padStart(4, "0")}`;
+  const patientId = crypto.randomUUID();
+  await db.auditEvent.create({
+    data: {
+      organizationId: user.organizationId,
+      actorUserId: user.id,
+      resourceId: patientId,
+      action: "PATIENT_CREATED",
+      resourceType: "PATIENT",
+      metadata: { name: lead.name, mobile: normalizedMobile, email: lead.email || "", dateOfBirth: "", gender: "", address: "", city: "", referredBy: "Lead / Enquiry", alternateContactNumber: "", notes: lead.notes || "", patientNumber }
+    }
+  });
+  return { id: patientId, patientNumber, name: lead.name, mobile: normalizedMobile };
+}
+
 export async function PATCH(request: Request) {
   const user = await requirePermission("reception.manage");
   const body = await request.json();
@@ -105,7 +160,19 @@ export async function PATCH(request: Request) {
   const existing = await findLeadEvent(user.organizationId, leadId.data);
   if (!existing) return NextResponse.json({ error: "Enquiry not found." }, { status: 404 });
 
-  if (body.action === "assign") {
+  if (body.action === "convertToPatient") {
+    try {
+      const patient = await convertLeadToPatient(user, existing.lead);
+      const lead = await db.auditEvent.create({
+        data: { organizationId: user.organizationId, actorUserId: user.id, resourceId: leadId.data, action: "LEAD_CONVERTED_TO_PATIENT", resourceType: "LEAD", metadata: { ...existing.lead, patientId: patient.id } }
+      });
+      return NextResponse.json({ patient, lead: serialize(lead as LeadEvent) });
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to create patient." }, { status: 400 });
+    }
+  }
+
+
     const ownerId = z.string().uuid().safeParse(body.ownerUserId);
     if (!ownerId.success) return NextResponse.json({ error: "Please select a valid owner." }, { status: 400 });
     const owner = await db.user.findFirst({ where: { id: ownerId.data, isActive: true, staffProfile: { is: { organizationId: user.organizationId, isActive: true } } }, select: { id: true } });

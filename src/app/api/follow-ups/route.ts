@@ -13,7 +13,7 @@ export async function GET(){
  const [f,p]=await Promise.all([events(user.organizationId,"FOLLOW_UP"),events(user.organizationId,"PATIENT")]);
  const patients=current(p).filter(e=>e.action!=="PATIENT_DELETED").map(e=>({id:e.resourceId??e.id,patientNumber:data(e).patientNumber??"",name:data(e).name??"",mobile:data(e).mobile??""}));
  const patientMap=new Map(patients.map(x=>[x.id,x]));
- const followups=current(f).map(e=>{const d=data(e),pt=patientMap.get(String(d.patientId));return {id:e.resourceId??e.id,patientId:d.patientId,patientNumber:pt?.patientNumber??d.patientNumber??"",patientName:pt?.name??d.patientName??"",mobile:pt?.mobile??d.mobile??"",dueDate:d.dueDate??"",purpose:d.purpose??"",assignedUserId:d.assignedUserId??"",assignedUserName:d.assignedUserName??"",notes:d.notes??"",status:d.status??"PENDING",createdAt:e.occurredAt.toISOString()}}).filter(x=>x.status!=="CANCELLED");
+ const followups=current(f).map(e=>{const d=data(e),pt=patientMap.get(String(d.patientId));return {id:e.resourceId??e.id,patientId:d.patientId,patientNumber:pt?.patientNumber??d.patientNumber??"",patientName:pt?.name??d.patientName??"",mobile:pt?.mobile??d.mobile??"",dueDate:d.dueDate??"",purpose:d.purpose??"",assignedUserId:d.assignedUserId??"",assignedUserName:d.assignedUserName??"",notes:d.notes??"",status:d.status??"PENDING",createdAt:e.occurredAt.toISOString()}});
  const staff=await db.user.findMany({where:{userRoles:{some:{organizationId:user.organizationId}},isActive:true},select:{id:true,name:true,email:true},orderBy:{name:"asc"}});
  return NextResponse.json({followups,patients,staff:staff.map(s=>({id:s.id,name:s.name?.trim()||s.email}))});
 }
@@ -31,7 +31,16 @@ export async function POST(request:Request){
   await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"FOLLOW_UP",resourceId:id,action:"FOLLOW_UP_CREATED",metadata:{patientId:p.data.patientId,patientNumber:pd.patientNumber??"",patientName:pd.name??"",mobile:pd.mobile??"",dueDate:p.data.dueDate,purpose:p.data.purpose,assignedUserId:p.data.assignedUserId||"",assignedUserName:assignedName,notes:p.data.notes??"",status:p.data.status,createdByUserId:user.id,createdByUserName:user.name??""}}});
   return NextResponse.json({id},{status:201});
  }
- if(body.action==="complete"||body.action==="cancel"){\n  const followupId=String(body.followupId||"");\n  if(!followupId)return NextResponse.json({error:"Follow-up not found."},{status:400});\n  const f=current(await events(user.organizationId,"FOLLOW_UP")).find(e=>(e.resourceId??e.id)===followupId);\n  if(!f)return NextResponse.json({error:"Follow-up not found."},{status:404});\n  const status=body.action==="complete"?"COMPLETED":"CANCELLED";\n  await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"FOLLOW_UP",resourceId:followupId,action:body.action==="complete"?"FOLLOW_UP_COMPLETED":"FOLLOW_UP_CANCELLED",metadata:{...data(f),status,updatedAt:new Date().toISOString(),updatedByUserId:user.id,updatedByUserName:user.name??""}}});\n  return NextResponse.json({ok:true});\n }\n if(body.action==="clear"){
+ if(body.action==="complete"||body.action==="cancel"){
+  const followupId=String(body.followupId||"");
+  if(!followupId)return NextResponse.json({error:"Follow-up not found."},{status:400});
+  const f=current(await events(user.organizationId,"FOLLOW_UP")).find(e=>(e.resourceId??e.id)===followupId);
+  if(!f)return NextResponse.json({error:"Follow-up not found."},{status:404});
+  const status=body.action==="complete"?"COMPLETED":"CANCELLED";
+  await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"FOLLOW_UP",resourceId:followupId,action:body.action==="complete"?"FOLLOW_UP_COMPLETED":"FOLLOW_UP_CANCELLED",metadata:{...data(f),status,updatedAt:new Date().toISOString(),updatedByUserId:user.id,updatedByUserName:user.name??""}}});
+  return NextResponse.json({ok:true});
+ }
+ if(body.action==="clear"){
   const followupId=String(body.followupId||"");
   if(!followupId)return NextResponse.json({error:"Follow-up not found."},{status:400});
   const f=current(await events(user.organizationId,"FOLLOW_UP")).find(e=>(e.resourceId??e.id)===followupId);

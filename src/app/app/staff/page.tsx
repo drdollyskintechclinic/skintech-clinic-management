@@ -8,8 +8,8 @@ const emptyForm={name:"",email:"",password:"",role:"RECEPTIONIST_TELECALLER",cli
 
 export default function StaffPage(){
  const [staff,setStaff]=useState<Staff[]>([]); const [locations,setLocations]=useState<Location[]>([]);
- const [open,setOpen]=useState(false); const [editing,setEditing]=useState<Staff|null>(null); const [form,setForm]=useState(emptyForm); const [saving,setSaving]=useState(false); const [error,setError]=useState("");
- async function load(){const response=await fetch("/api/staff",{cache:"no-store"});if(response.ok){const data=await response.json();setStaff(data.staff);setLocations(data.locations);}}
+ const [page,setPage]=useState(1); const pageSize=20; const totalPages=Math.max(1,Math.ceil(staff.length/pageSize)); const safePage=Math.min(page,totalPages); const pagedStaff=staff.slice((safePage-1)*pageSize,safePage*pageSize); const [open,setOpen]=useState(false); const [editing,setEditing]=useState<Staff|null>(null); const [form,setForm]=useState(emptyForm); const [saving,setSaving]=useState(false); const [error,setError]=useState("");
+ async function load(){const response=await fetch("/api/staff",{cache:"no-store"});if(response.ok){const data=await response.json();setStaff(data.staff);setLocations(data.locations);setPage(1);}}
  useEffect(()=>{void load()},[]);
  function openAdd(){setEditing(null);setForm({...emptyForm,clinicLocationId:locations[0]?.id||""});setError("");setOpen(true)}
  function openEdit(m:Staff){setEditing(m);setForm({name:m.name,email:m.email,password:"",role:m.role,clinicLocationId:m.clinicLocationId||locations[0]?.id||"",jobTitle:m.jobTitle,contactNumber:m.contactNumber,degree:m.degree,speciality:m.speciality});setError("");setOpen(true)}
@@ -34,7 +34,7 @@ export default function StaffPage(){
    </form></div>}
   <div className="card table-card lead-list"><div className="lead-table">
    <div className="lead-row lead-head"><span>Name</span><span>Role</span><span>Contact</span><span>Job title</span><span>Degree</span><span>Speciality</span><span>Email</span><span>Branch</span><span>Status</span><span>Actions</span></div>
-   {staff.map(m=><div className="lead-row" key={m.id}><strong>{m.name||"Unnamed staff"}</strong><span>{m.roleLabel}</span><span>{m.contactNumber||"—"}</span><span>{m.jobTitle||"—"}</span><span>{m.role==="DOCTOR"?(m.degree||"—"):"—"}</span><span>{m.role==="DOCTOR"?(m.speciality||"—"):"—"}</span><span>{m.email}</span><span>{m.clinicLocationName}</span><span>{m.isActive?"Active":"Inactive"}</span><span className="row-actions"><button className="text-button" type="button" onClick={()=>openEdit(m)}>Edit</button><button className={m.isActive?"danger-button":"text-button"} type="button" onClick={()=>void toggle(m)}>{m.isActive?"Deactivate":"Activate"}</button></span></div>)}
+   {pagedStaff.map(m=><div className="lead-row" key={m.id}><strong>{m.name||"Unnamed staff"}</strong><span>{m.roleLabel}</span><span>{m.contactNumber||"—"}</span><span>{m.jobTitle||"—"}</span><span>{m.role==="DOCTOR"?(m.degree||"—"):"—"}</span><span>{m.role==="DOCTOR"?(m.speciality||"—"):"—"}</span><span>{m.email}</span><span>{m.clinicLocationName}</span><span>{m.isActive?"Active":"Inactive"}</span><span className="row-actions"><button className="text-button" type="button" onClick={()=>openEdit(m)}>Edit</button><button className={m.isActive?"danger-button":"text-button"} type="button" onClick={()=>void toggle(m)}>{m.isActive?"Deactivate":"Activate"}</button></span></div>)}
    {staff.length===0&&<div className="empty-state"><strong>No staff added</strong><span>Add a staff member to manage clinic access.</span></div>}
   </div></div>
  </>;

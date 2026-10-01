@@ -173,6 +173,7 @@ export async function PATCH(request: Request) {
   }
 
 
+  if (body.action === "assign") {
     const ownerId = z.string().uuid().safeParse(body.ownerUserId);
     if (!ownerId.success) return NextResponse.json({ error: "Please select a valid owner." }, { status: 400 });
     const owner = await db.user.findFirst({ where: { id: ownerId.data, isActive: true, staffProfile: { is: { organizationId: user.organizationId, isActive: true } } }, select: { id: true } });

@@ -20,7 +20,7 @@ export default function StaffPage(){
   <p className="eyebrow">Staff management</p>
   <div className="page-header"><div><h1>Staff Management</h1><p className="lead">Manage doctors, receptionists, telecallers and therapists.</p></div><button className="button" onClick={openAdd}>+ Add staff</button></div>
   {error&&<p className="error">{error}</p>}
-  <div className="clinic-modal-backdrop" role="dialog" aria-modal="true" aria-label={editing?"Edit staff member":"Add staff member"}><div className="card form-card clinic-modal">{open&&<><div className="form-header"><div><h2>{editing?"Edit staff member":"Add staff member"}</h2><p className="muted">Permissions come from the selected role.</p></div><button className="text-button" type="button" onClick={()=>setOpen(false)}>Close</button></div>
+  {open&&<div className="clinic-modal-backdrop" role="dialog" aria-modal="true" aria-label={editing?"Edit staff member":"Add staff member"}><div className="card form-card clinic-modal"><div className="form-header"><div><h2>{editing?"Edit staff member":"Add staff member"}</h2><p className="muted">Permissions come from the selected role.</p></div><button className="text-button" type="button" onClick={()=>setOpen(false)}>Close</button></div>
    <form className="lead-form" onSubmit={submit}>
     <label>Name<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} required placeholder="Full name"/></label>
     <label>Role<select value={form.role} onChange={e=>setForm({...form,role:e.target.value})}><option value="DOCTOR">Doctor</option><option value="RECEPTIONIST_TELECALLER">Receptionist / Telecaller</option><option value="THERAPIST">Therapist</option></select></label>
@@ -31,8 +31,7 @@ export default function StaffPage(){
     <label>{editing?"New login password":"Login password"}<input value={form.password} onChange={e=>setForm({...form,password:e.target.value})} type="password" minLength={12} required={!editing} placeholder={editing?"Leave blank to keep current password":"Minimum 12 characters"}/></label>
     {doctor&&<><label>Degree<input value={form.degree} onChange={e=>setForm({...form,degree:e.target.value})} placeholder="BHMS, MBBS, BDS, MD..."/></label><label>Speciality<input value={form.speciality} onChange={e=>setForm({...form,speciality:e.target.value})} placeholder="Aesthetic Medicine, Trichology..."/></label></>}
     <div className="form-actions full"><button className="button" disabled={saving}>{saving?"Saving...":editing?"Save changes":"Add staff"}</button><button className="secondary-button" type="button" onClick={()=>setOpen(false)}>Cancel</button></div>
-   </form></div></>}
-  </div>
+   </form></div></div>}
   <div className="card table-card lead-list"><div className="lead-table">
    <div className="lead-row lead-head"><span>Name</span><span>Role</span><span>Contact</span><span>Job title</span><span>Degree</span><span>Speciality</span><span>Email</span><span>Branch</span><span>Status</span><span>Actions</span></div>
    {pagedStaff.map(m=><div className="lead-row" key={m.id}><strong>{m.name||"Unnamed staff"}</strong><span>{m.roleLabel}</span><span>{m.contactNumber||"—"}</span><span>{m.jobTitle||"—"}</span><span>{m.role==="DOCTOR"?(m.degree||"—"):"—"}</span><span>{m.role==="DOCTOR"?(m.speciality||"—"):"—"}</span><span>{m.email}</span><span>{m.clinicLocationName}</span><span>{m.isActive?"Active":"Inactive"}</span><span className="row-actions"><button className="text-button" type="button" onClick={()=>openEdit(m)}>Edit</button><button className={m.isActive?"danger-button":"text-button"} type="button" onClick={()=>void toggle(m)}>{m.isActive?"Deactivate":"Activate"}</button></span></div>)}

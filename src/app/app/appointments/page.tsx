@@ -86,6 +86,7 @@ export default function AppointmentsPage() {
   const requestedDate = searchParams.get("date");
   const bookFromFollowUp = searchParams.get("book") === "1";
   const requestedPatientId = searchParams.get("patientId");
+  const requestedFollowUpId = searchParams.get("followUpId");
   const [date, setDate] = useState(requestedDate || todayIndia);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -218,6 +219,7 @@ export default function AppointmentsPage() {
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const data = Object.fromEntries(form.entries());
+    if (!editing && bookingFromFollowUp && requestedFollowUpId) data.followUpId = requestedFollowUpId;
 
     const response = await fetch("/api/appointments", {
       method: editing ? "PATCH" : "POST",

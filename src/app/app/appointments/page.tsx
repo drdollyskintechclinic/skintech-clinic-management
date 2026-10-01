@@ -245,7 +245,7 @@ export default function AppointmentsPage() {
     <div className="appointments-header">
       <div className="appointments-title"><h1>Appointments</h1><p className="lead">Schedule visits, manage today's queue and track appointment status.</p></div>
       <div className="appointments-header-actions">
-        <label><span className="field-label-text">Date<span className="field-asterisk" aria-hidden="true">*</span></span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
+        <label>Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
         <button className="button" onClick={openNew}>+ New appointment</button>
       </div>
     </div>
@@ -262,7 +262,7 @@ export default function AppointmentsPage() {
         </label>
         <label><span className="field-label-text">Doctor<span className="field-asterisk" aria-hidden="true">*</span></span><select name="doctorUserId" required defaultValue={editing?.doctorUserId ?? ""}><option value="" disabled>Select doctor</option>{doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}</select></label>
         <div className="appointment-datetime">
-          <label>Date<input name="appointmentDate" type="date" required defaultValue={editing?.appointmentDate ?? date} /></label>
+          <label><span className="field-label-text">Date<span className="field-asterisk" aria-hidden="true">*</span></span><input name="appointmentDate" type="date" required defaultValue={editing?.appointmentDate ?? date} /></label>
           <label><span className="field-label-text">Time<span className="field-asterisk" aria-hidden="true">*</span></span><select name="appointmentTime" required defaultValue={editing?.appointmentTime ?? ""}><option value="" disabled>Select time</option>{timeSlots.map((time) => <option key={time} value={time}>{formatTime(time)}</option>)}</select></label>
         </div>
         <label><span className="field-label-text">Appointment type<span className="field-asterisk" aria-hidden="true">*</span></span><select name="appointmentType" required defaultValue={editing?.appointmentType ?? (bookingFromFollowUp ? "Follow-up" : "Consultation")}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>

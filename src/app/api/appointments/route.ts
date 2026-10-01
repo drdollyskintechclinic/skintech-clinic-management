@@ -15,7 +15,8 @@ const appointmentSchema = z.object({
   appointmentType: z.string().trim().min(2).max(100),
   treatment: z.string().trim().max(160).optional().or(z.literal("")),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
-  status: z.enum(statuses).optional()
+  status: z.enum(statuses).optional(),
+  followUpId: z.string().uuid().optional()
 });
 
 type AppointmentData = z.infer<typeof appointmentSchema>;
@@ -23,7 +24,7 @@ type AppointmentEvent = { id: string; occurredAt: Date; actorUserId: string | nu
 
 function serialize(event: AppointmentEvent) {
   const data = (event.metadata ?? {}) as AppointmentData & {
-    appointmentNumber?: string; status?: string; patientName?: string; patientNumber?: string; mobile?: string; doctorName?: string;
+    appointmentNumber?: string; status?: string; followUpId?: string; patientName?: string; patientNumber?: string; mobile?: string; doctorName?: string;
   };
   return {
     id: event.resourceId ?? event.id,
@@ -40,7 +41,8 @@ function serialize(event: AppointmentEvent) {
     appointmentType: data.appointmentType,
     treatment: data.treatment ?? "",
     notes: data.notes ?? "",
-    status: data.status ?? "SCHEDULED"
+    status: data.status ?? "SCHEDULED",
+    followUpId: data.followUpId
   };
 }
 

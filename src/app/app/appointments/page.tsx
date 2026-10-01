@@ -8,7 +8,7 @@ type Patient = { id: string; patientNumber: string; name: string; mobile: string
 type Doctor = { id: string; name: string };
 type Appointment = {
   id: string; appointmentNumber: string; patientId: string; patientNumber: string; patientName: string; mobile: string;
-  doctorUserId: string; doctorName: string; appointmentDate: string; appointmentTime: string;
+  leadId?: string; followUpId?: string; doctorUserId: string; doctorName: string; appointmentDate: string; appointmentTime: string;
   appointmentType: string; treatment?: string; notes?: string; status: string;
 };
 
@@ -87,6 +87,8 @@ export default function AppointmentsPage() {
   const bookFromFollowUp = searchParams.get("book") === "1";
   const requestedPatientId = searchParams.get("patientId");
   const requestedFollowUpId = searchParams.get("followUpId");
+  const requestedLeadId = searchParams.get("leadId");
+  const bookFromLead = searchParams.get("bookFromLead") === "1";
   const [date, setDate] = useState(requestedDate || todayIndia);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -101,6 +103,8 @@ export default function AppointmentsPage() {
   const [selectedTreatment, setSelectedTreatment] = useState("");
   const [treatmentOpen, setTreatmentOpen] = useState(false);
   const [bookingFromFollowUp, setBookingFromFollowUp] = useState(false);
+  const [bookingFromLead, setBookingFromLead] = useState(false);
+  const [leadName, setLeadName] = useState("");
   async function load() {
     const response = await fetch(`/api/appointments?date=${encodeURIComponent(date)}`, { cache: "no-store" });
     if (response.ok) {
@@ -143,6 +147,23 @@ export default function AppointmentsPage() {
     void prepareFollowUpBooking();
     return () => { cancelled = true; };
   }, [bookFromFollowUp, requestedPatientId]);
+
+  useEffect(() => {
+    if (!bookFromLead || !requestedLeadId) return;
+    let cancelled = false;
+    async function prepareLeadBooking() {
+      const response = await fetch(`/api/leads?id=${encodeURIComponent(requestedLeadId)}`, { cache: "no-store" });
+      if (!response.ok || cancelled) return;
+      const data = await response.json();
+      const lead = data.leads?.[0];
+      if (!lead || cancelled) return;
+      setEditing(null); setBookingFromLead(true); setBookingFromFollowUp(false); setBookingFromLead(false); setLeadName(""); setLeadName(lead.name);
+      setPatientQuery(""); setPatientResults([]); setSelectedPatient(null);
+      setSelectedTreatment(lead.interestedTreatment || ""); setTreatmentQuery(""); setTreatmentOpen(false); setError(""); setOpen(true);
+    }
+    void prepareLeadBooking();
+    return () => { cancelled = true; };
+  }, [bookFromLead, requestedLeadId]);
 
   useEffect(() => {
     if (!editAppointmentId || !appointments.length) return;
@@ -206,7 +227,7 @@ export default function AppointmentsPage() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedPatient) {
+    if (!selectedPatient && !bookingFromLead) {
       setError("Please search for and select a patient.");
       return;
     }
@@ -220,11 +241,12 @@ export default function AppointmentsPage() {
     const form = new FormData(formElement);
     const data = Object.fromEntries(form.entries());
     if (!editing && bookingFromFollowUp && requestedFollowUpId) data.followUpId = requestedFollowUpId;
+    if (!editing && bookingFromLead && requestedLeadId) data.leadId = requestedLeadId;
 
     const response = await fetch("/api/appointments", {
       method: editing ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(editing ? { ...data, patientId: selectedPatient.id, appointmentId: editing.id } : { ...data, patientId: selectedPatient.id })
+      body: JSON.stringify(editing ? { ...data, patientId: selectedPatient?.id, appointmentId: editing.id } : { ...data, ...(selectedPatient ? { patientId: selectedPatient.id } : {}) })
     });
     const result = await response.json();
     setSaving(false);
@@ -254,13 +276,14 @@ export default function AppointmentsPage() {
     {error && <p className="error">{error}</p>}
 
     {open && <div className="clinic-modal-backdrop" role="dialog" aria-modal="true" aria-label={editing ? "Edit appointment" : "New appointment"}><div className="card form-card clinic-modal">
-      <div className="form-header"><div><h2>{editing ? "Edit appointment" : "New appointment"}</h2><p className="muted">{editing ? `Appointment ${editing.appointmentNumber}` : "Search the existing patient and select a database-managed doctor."}</p></div><button className="text-button" type="button" onClick={closeForm}>Close</button></div>
+      <div className="form-header"><div><h2>{editing ? "Edit appointment" : "New appointment"}</h2><p className="muted">{editing ? `Appointment ${editing.appointmentNumber}` : bookingFromLead ? `Booking from enquiry: ${leadName}` : "Search the existing patient and select a database-managed doctor."}</p></div><button className="text-button" type="button" onClick={closeForm}>Close</button></div>
       <form className="lead-form" onSubmit={submit}>
         <label className="full"><span className="field-label-text">Patient<span className="field-asterisk" aria-hidden="true">*</span></span>
           {selectedPatient ? <div className="card selected-patient"><strong>{selectedPatient.patientNumber} · {selectedPatient.name}</strong><span>{selectedPatient.mobile}</span><button className="text-button" type="button" onClick={() => { setSelectedPatient(null); setPatientQuery(""); }}>Change</button></div> : <>
             <input value={patientQuery} onChange={(event) => void searchPatients(event.target.value)} placeholder="Search name, mobile or Patient ID" autoComplete="off" />
             {patientQuery.trim().length >= 2 && <div className="card search-results">{patientResults.length ? patientResults.map((patient) => <button type="button" className="search-result" key={patient.id} onClick={() => { setSelectedPatient(patient); setPatientResults([]); }}>{patient.patientNumber} · {patient.name}<small>{patient.mobile}</small></button>) : <span className="muted">No matching patients found.</span>}</div>}
           </>}
+            {bookingFromLead && !selectedPatient && <div className="muted" style={{ marginTop: ".4rem" }}>A patient record will be created automatically from this enquiry if one does not already exist.</div>}
         </label>
         <label><span className="field-label-text">Doctor<span className="field-asterisk" aria-hidden="true">*</span></span><select name="doctorUserId" required defaultValue={editing?.doctorUserId ?? ""}><option value="" disabled>Select doctor</option>{doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}</select></label>
         <div className="appointment-datetime">

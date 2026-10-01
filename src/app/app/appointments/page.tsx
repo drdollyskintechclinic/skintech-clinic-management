@@ -245,7 +245,7 @@ export default function AppointmentsPage() {
     <div className="appointments-header">
       <div className="appointments-title"><h1>Appointments</h1><p className="lead">Schedule visits, manage today's queue and track appointment status.</p></div>
       <div className="appointments-header-actions">
-        <label>Date<input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
+        <label><span className="field-label-text">Date<span className="field-asterisk" aria-hidden="true">*</span></span><input type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label>
         <button className="button" onClick={openNew}>+ New appointment</button>
       </div>
     </div>
@@ -254,25 +254,25 @@ export default function AppointmentsPage() {
     {open && <div className="clinic-modal-backdrop" role="dialog" aria-modal="true" aria-label={editing ? "Edit appointment" : "New appointment"}><div className="card form-card clinic-modal">
       <div className="form-header"><div><h2>{editing ? "Edit appointment" : "New appointment"}</h2><p className="muted">{editing ? `Appointment ${editing.appointmentNumber}` : "Search the existing patient and select a database-managed doctor."}</p></div><button className="text-button" type="button" onClick={closeForm}>Close</button></div>
       <form className="lead-form" onSubmit={submit}>
-        <label className="full">Patient
+        <label className="full"><span className="field-label-text">Patient<span className="field-asterisk" aria-hidden="true">*</span></span>
           {selectedPatient ? <div className="card selected-patient"><strong>{selectedPatient.patientNumber} · {selectedPatient.name}</strong><span>{selectedPatient.mobile}</span><button className="text-button" type="button" onClick={() => { setSelectedPatient(null); setPatientQuery(""); }}>Change</button></div> : <>
             <input value={patientQuery} onChange={(event) => void searchPatients(event.target.value)} placeholder="Search name, mobile or Patient ID" autoComplete="off" />
             {patientQuery.trim().length >= 2 && <div className="card search-results">{patientResults.length ? patientResults.map((patient) => <button type="button" className="search-result" key={patient.id} onClick={() => { setSelectedPatient(patient); setPatientResults([]); }}>{patient.patientNumber} · {patient.name}<small>{patient.mobile}</small></button>) : <span className="muted">No matching patients found.</span>}</div>}
           </>}
         </label>
-        <label>Doctor<select name="doctorUserId" required defaultValue={editing?.doctorUserId ?? ""}><option value="" disabled>Select doctor</option>{doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}</select></label>
+        <label><span className="field-label-text">Doctor<span className="field-asterisk" aria-hidden="true">*</span></span><select name="doctorUserId" required defaultValue={editing?.doctorUserId ?? ""}><option value="" disabled>Select doctor</option>{doctors.map((doctor) => <option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}</select></label>
         <div className="appointment-datetime">
           <label>Date<input name="appointmentDate" type="date" required defaultValue={editing?.appointmentDate ?? date} /></label>
-          <label>Time<select name="appointmentTime" required defaultValue={editing?.appointmentTime ?? ""}><option value="" disabled>Select time</option>{timeSlots.map((time) => <option key={time} value={time}>{formatTime(time)}</option>)}</select></label>
+          <label><span className="field-label-text">Time<span className="field-asterisk" aria-hidden="true">*</span></span><select name="appointmentTime" required defaultValue={editing?.appointmentTime ?? ""}><option value="" disabled>Select time</option>{timeSlots.map((time) => <option key={time} value={time}>{formatTime(time)}</option>)}</select></label>
         </div>
-        <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? (bookingFromFollowUp ? "Follow-up" : "Consultation")}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
-        <label><span className="field-label-text">Treatment / purpose<span className="field-asterisk" aria-hidden="true">*</span></span>
+        <label><span className="field-label-text">Appointment type<span className="field-asterisk" aria-hidden="true">*</span></span><select name="appointmentType" required defaultValue={editing?.appointmentType ?? (bookingFromFollowUp ? "Follow-up" : "Consultation")}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
+        <label>Treatment / purpose
           <select name="treatment" value={selectedTreatment} onChange={(event) => setSelectedTreatment(event.target.value)}>
             <option value="">Select procedure</option>
             {treatmentOptions.map((treatment) => <option key={treatment} value={treatment}>{treatment}</option>)}
           </select>
         </label>
-        <label className="full"><span className="field-label-text">Notes<span className="field-asterisk" aria-hidden="true">*</span></span><textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Additional appointment notes..." /></label>
+        <label className="full">Notes<textarea name="notes" rows={3} defaultValue={editing?.notes ?? ""} placeholder="Additional appointment notes..." /></label>
         {editing && <label>Status<select name="status" defaultValue={editing.status}>{Object.entries(statuses).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>}
         <div className="form-actions full"><button className="button" disabled={saving}>{saving ? "Saving..." : editing ? "Save changes" : "Create appointment"}</button><button className="secondary-button" type="button" onClick={closeForm}>Cancel</button></div>
       </form>

@@ -117,7 +117,7 @@ export default function AppointmentsPage() {
     if (response.ok) setPatientResults((await response.json()).patients);
   }
 
-  useEffect(() => { void load(); }, [date]);
+  useEffect(() => { setAppointmentPage(1); void load(); }, [date]);
 
   useEffect(() => {
     if (!bookFromFollowUp || !requestedPatientId) return;
@@ -161,7 +161,7 @@ export default function AppointmentsPage() {
     void loadUpcomingCount();
   }, []);
 
-  const counts = useMemo(() => ({
+  const appointmentPageSize = 20; const [appointmentPage,setAppointmentPage]=useState(1); const sortedAppointments=useMemo(()=>appointments.slice().sort((a,b)=>a.appointmentTime.localeCompare(b.appointmentTime)),[appointments]); const appointmentTotalPages=Math.max(1,Math.ceil(sortedAppointments.length/appointmentPageSize)); const safeAppointmentPage=Math.min(appointmentPage,appointmentTotalPages); const pagedAppointments=sortedAppointments.slice((safeAppointmentPage-1)*appointmentPageSize,safeAppointmentPage*appointmentPageSize);\n\n  const counts = useMemo(() => ({
     today: appointments.length,
     waiting: appointments.filter((item) => item.status === "CHECKED_IN").length
   }), [appointments]);
@@ -285,7 +285,7 @@ export default function AppointmentsPage() {
     <div className="card table-card lead-list">
       {appointments.length === 0 ? <div className="empty-state"><strong>No appointments for this date</strong><span>Create an appointment to build the clinic schedule.</span></div> : <div className="lead-table appointment-table">
         <div className="lead-row lead-head"><span>Appointment</span><span>Time</span><span>Patient</span><span>Mobile</span><span>Doctor</span><span>Type</span><span>Treatment</span><span>Status</span></div>
-        {appointments.slice().sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime)).map((appointment) => <div className="lead-row" key={appointment.id}>
+        {pagedAppointments.map((appointment) => <div className="lead-row" key={appointment.id}>
           <strong>{appointment.appointmentNumber}</strong><strong>{appointment.appointmentTime}</strong><span><strong>{appointment.patientNumber}</strong><br />{appointment.patientName}</span><span>{appointment.mobile}</span><span>{appointment.doctorName}</span><span>{appointment.appointmentType}</span><span>{appointment.treatment || "—"}</span><span>{statuses[appointment.status] || appointment.status}</span><span className="row-actions"><button className="text-button" type="button" onClick={() => openEdit(appointment)}>Edit</button>{!["CANCELLED", "NO_SHOW"].includes(appointment.status) && <Link className="text-button" href={`/app/appointments/${appointment.id}/consultation`}>Consultation</Link>}{appointment.status === "SCHEDULED" && <button className="danger-button" type="button" onClick={() => void deleteAppointment(appointment)}>Delete</button>}</span>
         </div>)}
       </div>}

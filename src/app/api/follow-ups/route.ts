@@ -7,7 +7,7 @@ export const dynamic="force-dynamic";
 const schema=z.object({patientId:z.string().uuid(),dueDate:z.string().date(),purpose:z.string().trim().min(2).max(200),assignedUserId:z.string().uuid().optional().or(z.literal("")),notes:z.string().trim().max(2000).optional().or(z.literal("")),status:z.enum(["PENDING","COMPLETED","CANCELLED"]).default("PENDING")});
 const events=async(organizationId:string,resourceType:string)=>db.auditEvent.findMany({where:{organizationId,resourceType},orderBy:{occurredAt:"desc"},take:5000});
 const data=(e:{metadata:unknown})=>(e.metadata??{}) as Record<string,any>;
-function current(items:any[]){const m=new Map<string,any>();for(const e of items){const id=e.resourceId??e.id;if(!m.has(id))m.set(id,e)}return [...m.values()].filter(e=>e.action!=="FOLLOW_UP_DELETED")}
+function current(items:any[]){const m=new Map<string,any>();for(const e of items){const id=e.resourceId??e.id;if(!m.has(id))m.set(id,e)}return [...m.values()].filter(e=>e.action!=="FOLLOW_UP_DELETED" && e.action!=="FOLLOW_UP_CLEARED")}
 export async function GET(){
  const user=await requirePermission("reception.manage");
  const [f,p]=await Promise.all([events(user.organizationId,"FOLLOW_UP"),events(user.organizationId,"PATIENT")]);
@@ -30,6 +30,14 @@ export async function POST(request:Request){
   const id=crypto.randomUUID();
   await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"FOLLOW_UP",resourceId:id,action:"FOLLOW_UP_CREATED",metadata:{patientId:p.data.patientId,patientNumber:pd.patientNumber??"",patientName:pd.name??"",mobile:pd.mobile??"",dueDate:p.data.dueDate,purpose:p.data.purpose,assignedUserId:p.data.assignedUserId||"",assignedUserName:assignedName,notes:p.data.notes??"",status:p.data.status,createdByUserId:user.id,createdByUserName:user.name??""}}});
   return NextResponse.json({id},{status:201});
+ }
+ if(body.action==="clear"){
+  const followupId=String(body.followupId||"");
+  if(!followupId)return NextResponse.json({error:"Follow-up not found."},{status:400});
+  const f=current(await events(user.organizationId,"FOLLOW_UP")).find(e=>(e.resourceId??e.id)===followupId);
+  if(!f)return NextResponse.json({error:"Follow-up not found."},{status:404});
+  await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"FOLLOW_UP",resourceId:followupId,action:"FOLLOW_UP_CLEARED",metadata:{...data(f),status:"CANCELLED",clearedAt:new Date().toISOString(),clearedByUserId:user.id,clearedByUserName:user.name??""}}});
+  return NextResponse.json({ok:true});
  }
  if(body.action==="update"){
   const p=z.object({followupId:z.string().uuid(),dueDate:z.string().date(),purpose:z.string().trim().min(2).max(200),assignedUserId:z.string().uuid().optional().or(z.literal("")),notes:z.string().trim().max(2000).optional().or(z.literal("")),status:z.enum(["PENDING","COMPLETED","CANCELLED"])}).safeParse(body.data);

@@ -18,8 +18,8 @@ button, input, select, textarea { font: inherit; }
 h1 { font-size: clamp(2rem, 4vw, 2.8rem); margin: 0 0 .6rem; letter-spacing: -.03em; }
 h2 { margin-top: 0; }
 .lead { color: var(--muted); max-width: 48rem; font-size: 1.05rem; line-height: 1.6; }
-.muted, .optional { color: var(--muted); }
-.optional { font-size: .8rem; font-weight: 400; }
+.muted, .field-asterisk { color: var(--muted); }
+.field-asterisk { font-size: .8rem; font-weight: 400; }
 .card { border: 1px solid var(--line); border-radius: .75rem; background: var(--surface); padding: 1.25rem; box-shadow: 0 1px 2px rgba(23, 48, 45, .04); }
 .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
 .stats { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); margin: 2rem 0; }
@@ -252,3 +252,5 @@ h2 { margin-top: 0; }
 .followup-date-filter input { border: 1px solid var(--line); border-radius: .45rem; padding: .7rem .8rem; background: white; color: var(--ink); }
 .followup-pagination { margin-bottom: 1rem; }
 @media (max-width: 700px) { .followup-filters { align-items: stretch; } .followup-date-filter { width: 100%; } .followup-filters .secondary-button { align-self: flex-start; } }
+
+.field-asterisk { margin-left: .2rem; color: var(--brand); font-weight: 800; }

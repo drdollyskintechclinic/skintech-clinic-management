@@ -92,7 +92,7 @@ async function patientForAppointment(organizationId: string, patientId: string) 
 
 async function leadForAppointment(organizationId: string, leadId: string) {
   const events = await db.auditEvent.findMany({ where: { organizationId, resourceType: "LEAD", resourceId: leadId }, orderBy: { occurredAt: "desc" }, take: 1 });
-  const event = events[0] as LeadEvent | undefined;
+  const event = events[0] as { action: string; metadata: unknown } | undefined;
   if (!event || event.action === "LEAD_DELETED") return null;
   return { id: leadId, ...((event.metadata ?? {}) as Record<string, unknown>) };
 }

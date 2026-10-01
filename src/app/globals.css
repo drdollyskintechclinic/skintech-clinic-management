@@ -11,6 +11,10 @@ button, input, select, textarea { font: inherit; }
 .nav { display: grid; gap: .4rem; margin-top: 2rem; }
 .nav a { border-radius: .45rem; padding: .7rem .75rem; color: #dcebe7; }
 .nav a:hover { background: #254541; }
+.nav-section { margin-top: .75rem; padding-top: .75rem; border-top: 1px solid rgba(220, 235, 231, .16); }
+.nav-section-title { padding: .35rem .75rem .3rem; color: #9fc0b9; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.nav-section-links { display: grid; gap: .25rem; }
+.nav-section-links a { padding-left: 1rem; }
 .sidebar-footer { margin-top: auto; display: grid; gap: .2rem; color: #b9d5cf; overflow-wrap: anywhere; }
 .sidebar-footer strong { color: white; font-size: .82rem; }
 .content { padding: 2.5rem; max-width: 80rem; width: 100%; min-width: 0; overflow-x: hidden; }

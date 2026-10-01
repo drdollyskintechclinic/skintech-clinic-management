@@ -84,6 +84,8 @@ export default function AppointmentsPage() {
   const searchParams = useSearchParams();
   const editAppointmentId = searchParams.get("edit");
   const requestedDate = searchParams.get("date");
+  const bookFromFollowUp = searchParams.get("book") === "1";
+  const requestedPatientId = searchParams.get("patientId");
   const [date, setDate] = useState(requestedDate || todayIndia);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -97,6 +99,7 @@ export default function AppointmentsPage() {
   const [treatmentQuery, setTreatmentQuery] = useState("");
   const [selectedTreatment, setSelectedTreatment] = useState("");
   const [treatmentOpen, setTreatmentOpen] = useState(false);
+  const [bookingFromFollowUp, setBookingFromFollowUp] = useState(false);
   async function load() {
     const response = await fetch(`/api/appointments?date=${encodeURIComponent(date)}`, { cache: "no-store" });
     if (response.ok) {
@@ -115,6 +118,30 @@ export default function AppointmentsPage() {
   }
 
   useEffect(() => { void load(); }, [date]);
+
+  useEffect(() => {
+    if (!bookFromFollowUp || !requestedPatientId) return;
+    let cancelled = false;
+    async function prepareFollowUpBooking() {
+      const response = await fetch(`/api/patients?id=${encodeURIComponent(requestedPatientId)}`, { cache: "no-store" });
+      if (!response.ok || cancelled) return;
+      const data = await response.json();
+      const patient = data.patients?.[0];
+      if (!patient || cancelled) return;
+      setEditing(null);
+      setSelectedPatient(patient);
+      setPatientQuery("");
+      setPatientResults([]);
+      setTreatmentQuery("");
+      setSelectedTreatment("Follow-up");
+      setTreatmentOpen(false);
+      setBookingFromFollowUp(true);
+      setError("");
+      setOpen(true);
+    }
+    void prepareFollowUpBooking();
+    return () => { cancelled = true; };
+  }, [bookFromFollowUp, requestedPatientId]);
 
   useEffect(() => {
     if (!editAppointmentId || !appointments.length) return;
@@ -161,7 +188,7 @@ export default function AppointmentsPage() {
   }
 
   function closeForm() {
-    setOpen(false); setEditing(null); setError(""); setPatientQuery(""); setPatientResults([]); setSelectedPatient(null); setTreatmentQuery(""); setSelectedTreatment(""); setTreatmentOpen(false);
+    setOpen(false); setEditing(null); setError(""); setPatientQuery(""); setPatientResults([]); setSelectedPatient(null); setTreatmentQuery(""); setSelectedTreatment(""); setTreatmentOpen(false); setBookingFromFollowUp(false);
   }
 
   async function deleteAppointment(appointment: Appointment) {
@@ -236,7 +263,7 @@ export default function AppointmentsPage() {
           <label>Date<input name="appointmentDate" type="date" required defaultValue={editing?.appointmentDate ?? date} /></label>
           <label>Time<select name="appointmentTime" required defaultValue={editing?.appointmentTime ?? ""}><option value="" disabled>Select time</option>{timeSlots.map((time) => <option key={time} value={time}>{formatTime(time)}</option>)}</select></label>
         </div>
-        <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? "Consultation"}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
+        <label>Appointment type<select name="appointmentType" required defaultValue={editing?.appointmentType ?? (bookingFromFollowUp ? "Follow-up" : "Consultation")}>{appointmentTypes.map((type) => <option key={type}>{type}</option>)}</select></label>
         <label>Treatment / purpose <span className="optional">optional</span>
           <select name="treatment" value={selectedTreatment} onChange={(event) => setSelectedTreatment(event.target.value)}>
             <option value="">Select procedure</option>

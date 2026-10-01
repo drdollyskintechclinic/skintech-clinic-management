@@ -31,7 +31,7 @@ export async function POST(request:Request){
   await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"FOLLOW_UP",resourceId:id,action:"FOLLOW_UP_CREATED",metadata:{patientId:p.data.patientId,patientNumber:pd.patientNumber??"",patientName:pd.name??"",mobile:pd.mobile??"",dueDate:p.data.dueDate,purpose:p.data.purpose,assignedUserId:p.data.assignedUserId||"",assignedUserName:assignedName,notes:p.data.notes??"",status:p.data.status,createdByUserId:user.id,createdByUserName:user.name??""}}});
   return NextResponse.json({id},{status:201});
  }
- if(body.action==="clear"){
+ if(body.action==="complete"||body.action==="cancel"){\n  const followupId=String(body.followupId||"");\n  if(!followupId)return NextResponse.json({error:"Follow-up not found."},{status:400});\n  const f=current(await events(user.organizationId,"FOLLOW_UP")).find(e=>(e.resourceId??e.id)===followupId);\n  if(!f)return NextResponse.json({error:"Follow-up not found."},{status:404});\n  const status=body.action==="complete"?"COMPLETED":"CANCELLED";\n  await db.auditEvent.create({data:{organizationId:user.organizationId,actorUserId:user.id,resourceType:"FOLLOW_UP",resourceId:followupId,action:body.action==="complete"?"FOLLOW_UP_COMPLETED":"FOLLOW_UP_CANCELLED",metadata:{...data(f),status,updatedAt:new Date().toISOString(),updatedByUserId:user.id,updatedByUserName:user.name??""}}});\n  return NextResponse.json({ok:true});\n }\n if(body.action==="clear"){
   const followupId=String(body.followupId||"");
   if(!followupId)return NextResponse.json({error:"Follow-up not found."},{status:400});
   const f=current(await events(user.organizationId,"FOLLOW_UP")).find(e=>(e.resourceId??e.id)===followupId);

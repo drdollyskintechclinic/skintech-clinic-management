@@ -275,7 +275,8 @@ export async function PATCH(request: Request) {
     patientName: patient.name,
     mobile: patient.mobile,
     doctorName: selectedDoctorName,
-    status: parsed.data.status ?? existing.status
+    status: parsed.data.status ?? existing.status,
+    followUpId: parsed.data.followUpId ?? existing.followUpId
   };
 
   const event = await saveAppointmentEvent(user, existing.id, "APPOINTMENT_UPDATED", metadata);
